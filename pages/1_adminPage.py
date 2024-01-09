@@ -4,8 +4,8 @@ from streamlit_option_menu import option_menu
 from streamlit_gsheets import GSheetsConnection
 from datetime import date
 
-challenge_table_name = "challenge"
-users_table_name = "user"
+challenge_table_name = "challenges"
+users_table_name = "users"
 
 st.set_page_config(page_title="Admin Page", page_icon="📈", layout="wide")
 
