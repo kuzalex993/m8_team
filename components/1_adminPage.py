@@ -2,20 +2,14 @@ import pandas as pd
 import streamlit as st
 from streamlit_option_menu import option_menu
 from streamlit_gsheets import GSheetsConnection
-from datetime import date, timedelta
-from components.gsheets_components import add_new_record
+from datetime import date
 
 challenge_table_name = "challenges"
 users_table_name = "users"
 
-
+st.set_page_config(page_title="Admin Page", page_icon="📈", layout="wide")
 
 conn = st.connection("gsheets", type=GSheetsConnection)
-data = conn.read(worksheet=challenge_table_name, usecols=list(range(8)))
-challenges_df = data.dropna(subset=["challenge_id"])
-
-data = conn.read(worksheet=users_table_name, usecols=list(range(5)))
-user_df = data.dropna(subset=["user_id"])
 
 # initialize session variables
 if "task_description" not in st.session_state:
@@ -42,37 +36,17 @@ with st.sidebar:
 if selected == "Сотрудники":
     st.subheader("Редактор сотрудников")
     st.info("Назначение задач сотрудникам")
-
+    data = conn.read(worksheet=users_table_name, usecols=list(range(5)))
+    user_df = data.dropna(subset=["user_id"])
     st.dataframe(user_df, use_container_width=True, hide_index=True)
-    users_list = user_df['user_name'].tolist()
-    challenges_list = challenges_df['challenge_description'].tolist()
-    col1, col2 = st.columns(2)
-    with col1:
-        selected_user = st.selectbox(label="Выберите сотрудника", options=users_list)
-        submit_challenges = st.button(label="Назначить")
-    with col2:
-        selected_challenges = st.multiselect(label="Выберите сотрудника", options=challenges_list)
-    if submit_challenges:
-        add_new_record(table_name="user_challenge",
-                       values_to_add={
-                           'user_challenge_id': 4,
-                           "user_id": 1,
-                           "user_name": selected_user,
-                           "challenge_id": 1,
-                           "challenge_descripion": selected_challenges[0],
-                           "assigning_date": date.today(),
-                           "planned_finish_date": date.today() + timedelta(days=7),
-                           'challenge_status': 'New',
-                           'challenge_success': 'Unknown'
-                       })
-        print("submitted")
 
 elif selected == "Задачи":
     st.subheader("Редактор задач")
     st.info("Добавление/удаление задач в базе данных")
+    data = conn.read(worksheet=challenge_table_name, usecols=list(range(8)))
+    df = data.dropna(subset=["task_id"])
 
-
-    st.dataframe(challenges_df, use_container_width=True,
+    st.dataframe(df, use_container_width=True,
                  column_config={
                      "task_id": "ID",
                      "task_description": "Описание задачи",
@@ -115,17 +89,19 @@ elif selected == "Задачи":
     if add_new_task:
         new_task_active = True
         new_task_date_creation = date.today()
-        new_task_id = challenges_df["challenge_id"].max() + 1
+        new_task_id = df["task_id"].max() + 1
         new_task = {
-            "challenge_id": new_task_id,
-            "challenge_description": st.session_state.task_description,
-            "challenge_award": st.session_state.task_award,
-            "challenge_planned_time_completion": st.session_state.task_planned_time,
-            "challenge_active": new_task_active,
-            "challenge_date_creation": new_task_date_creation
+            "task_id": new_task_id,
+            "task_description": st.session_state.task_description,
+            "task_award": st.session_state.task_award,
+            "task_planned_time_completion": st.session_state.task_planned_time,
+            "task_active": new_task_active,
+            "task_date_creation": new_task_date_creation,
+            "task_last_update": new_task_date_creation,
+            "task_category": None
         }
         new_task_df = pd.DataFrame([new_task])
-        df = pd.concat([challenges_df, new_task_df], ignore_index=True)
+        df = pd.concat([df, new_task_df], ignore_index=True)
         df = conn.update(worksheet=challenge_table_name, data=df)
         st.cache_data.clear()
         st.experimental_rerun()
