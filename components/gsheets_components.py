@@ -20,3 +20,10 @@ def add_new_record(table_name: str, values_to_add: list):
     st.cache_data.clear()
     st.rerun()
     print(response)
+
+
+def update_table_in_db(table_name: str, df: pd.DataFrame):
+    response = conn.update(worksheet=table_name, data=df)
+    st.cache_data.clear()
+    st.rerun()
+    print(response)
