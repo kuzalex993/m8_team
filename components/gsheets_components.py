@@ -3,10 +3,10 @@ from datetime import date
 import streamlit as st
 import pandas as pd
 
-conn = st.connection("gsheets", type=GSheetsConnection)
+#conn = st.connection("gsheets", type=GSheetsConnection)
 
 
-def add_new_record(table_name: str, values_to_add: list):
+def add_new_record(table_name: str, values_to_add: list, conn, rerun=True):
     data_from_gsh = conn.read(worksheet=table_name)
     data_from_gsh = data_from_gsh.dropna(subset=[f"{table_name}_id"])
     next_id = data_from_gsh[f"{table_name}_id"].max() + 1
@@ -17,13 +17,15 @@ def add_new_record(table_name: str, values_to_add: list):
         next_id += 1
 
     response = conn.update(worksheet=table_name, data=data_from_gsh)
-    st.cache_data.clear()
-    st.rerun()
+    if rerun:
+        st.cache_data.clear()
+        st.rerun()
     print(response)
 
 
-def update_table_in_db(table_name: str, df: pd.DataFrame):
+def update_table_in_db(table_name: str, df: pd.DataFrame, conn, rerun=True):
     response = conn.update(worksheet=table_name, data=df)
-    st.cache_data.clear()
-    st.rerun()
+    if rerun:
+        st.cache_data.clear()
+        st.rerun()
     print(response)
