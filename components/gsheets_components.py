@@ -1,9 +1,7 @@
-from streamlit_gsheets import GSheetsConnection
-from datetime import date
+
 import streamlit as st
 import pandas as pd
 
-#conn = st.connection("gsheets", type=GSheetsConnection)
 
 
 def add_new_record(table_name: str, values_to_add: list, conn, rerun=True):
