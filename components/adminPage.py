@@ -17,35 +17,10 @@ transaction_type = {
     "Зарезирвировать": "bonus reserve"
 }
 
-# initialization of dataframes
-conn = st.connection("gsheets", type=GSheetsConnection)
-data = conn.read(worksheet=challenge_table_name, usecols=list(range(8)))
-challenges_df = data.dropna(subset=["challenge_id"])
-
-data = conn.read(worksheet=users_table_name, usecols=list(range(7)))
-user_df = data.dropna(subset=["user_id"])
-
-data = conn.read(worksheet=rewards_table_name, usecols=list(range(5)))
-rewards_df = data.dropna(subset=["reward_id"])
-
-user_challenge_df = conn.read(worksheet=user_challenge_table_name)
-
-# initialize session variables
-if "task_description" not in st.session_state:
-    st.session_state.task_description = ""
-    st.session_state.task_award = ""
-    st.session_state.task_planned_time = ""
-if "reward_disc" not in st.session_state:
-    st.session_state.reward_disc = ""
-    st.session_state.reward_price = ""
-
-if "bonus_delta" not in st.session_state:
-    st.session_state.bonus_delta = None
-
 
 def update_user_bonus_table():
     st.session_state.bonus_delta = st.session_state.new_bonus_delta_widget
-    st.session_state.new_bonus_delta_widget = None
+    st.session_state.new_bonus_delta_widget = 0
 
 def update_table_create_new_reward():
     st.session_state.reward_disc = st.session_state.reward_disc_widget
@@ -85,9 +60,35 @@ def update_table_update_challenge():
     st.session_state.edit_challenge_planned_time_widget = None
 
 def show_admin_page():
+    # initialize session variables
+    if "task_description" not in st.session_state:
+        st.session_state.task_description = ""
+        st.session_state.task_award = ""
+        st.session_state.task_planned_time = ""
+    if "reward_disc" not in st.session_state:
+        st.session_state.reward_disc = ""
+        st.session_state.reward_price = ""
+
+    if "bonus_delta" not in st.session_state:
+        st.session_state.bonus_delta = None
+
+
     with st.sidebar:
         selected = option_menu("M8.Agenсy", ["Сотрудники", "Задания", "Награды", "Аналитика"],
                                icons=['house', "list-task", "award"], menu_icon="cast", default_index=0)
+    # initialization of dataframes
+    conn = st.connection("gsheets", type=GSheetsConnection)
+    data = conn.read(worksheet=challenge_table_name, usecols=list(range(8)))
+    challenges_df = data.dropna(subset=["challenge_id"])
+
+    data = conn.read(worksheet=users_table_name, usecols=list(range(7)))
+    user_df = data.dropna(subset=["user_id"])
+
+    data = conn.read(worksheet=rewards_table_name, usecols=list(range(5)))
+    rewards_df = data.dropna(subset=["reward_id"])
+
+    user_challenge_df = conn.read(worksheet=user_challenge_table_name)
+
     if selected == "Сотрудники":
         users_list = user_df['user_name'].tolist()
         challenges_list = challenges_df['challenge_description'].tolist()
@@ -102,17 +103,18 @@ def show_admin_page():
             with tab1:
                 col1, col2 = st.columns(2)
                 with col1:
-                    additional_bonus = st.number_input(label="Бонусы", value=None, placeholder="Введите количество бонусов",
+                    additional_bonus = st.number_input(label="Бонусы", value=0, placeholder="Введите количество бонусов",
                                                        key="new_bonus_delta_widget")
                     operation = st.radio(label="Операция", options=["Добавить", "Вычесть"], horizontal=True)
                     if operation == "Вычесть":
-                        st.session_state.bonus_delta *= (-1)
+                        additional_bonus *= (-1)
                     add_bonus = st.button("Изменить баланс", on_click=update_user_bonus_table)
                 with col2:
-                    st.metric(label="Текущий баланс", value=user_account, delta=st.session_state.bonus_delta,
+                    st.metric(label="Текущий баланс", value=user_account, delta=additional_bonus,
                               delta_color="normal", help=None, label_visibility="visible")
                 if add_bonus:
-                    new_balance = user_account + int(st.session_state.bonus_delta)
+                    new_balance = user_account + int(st.session_state.bonus_delta if operation == "Добавить"
+                                                     else st.session_state.bonus_delta * (-1))
                     user_df.loc[user_df["user_id"] == user_id, ["user_free_bonuses"]] = [new_balance]
                     update_table_in_db(table_name=users_table_name, df=user_df, conn=conn, rerun=False)
 
