@@ -3,14 +3,14 @@ st.set_page_config(page_title="My performance", layout="wide", initial_sidebar_s
 import streamlit_authenticator as stauth
 import yaml
 from yaml.loader import SafeLoader
+from components.firebase import get_credentials, add_user
 from components.adminPage import show_admin_page
 # from components.userPage import show_user_page
 import firebase_admin
 from firebase_admin import credentials
 from firebase_admin import firestore
 
-with open('configuration/users.yaml') as file:
-    config = yaml.load(file, Loader=SafeLoader)
+config = get_credentials()
 
 authenticator = stauth.Authenticate(
     config['credentials'],
@@ -19,12 +19,11 @@ authenticator = stauth.Authenticate(
     config['cookie']['expiry_days'],
     config['preauthorized']
 )
-
 name, authentication_status, username = authenticator.login(location='main',
-                                                                fields={'Form name': 'Войти в аккаунт',
-                                                                        'Username': 'Имя пользователя',
-                                                                        'Password': 'Пароль',
-                                                                        'Login': 'Войти'})
+                                                            fields={'Form name': 'Войти в аккаунт',
+                                                                    'Username': 'Имя пользователя',
+                                                                    'Password': 'Пароль',
+                                                                    'Login': 'Войти'})
 
 if authentication_status == False:
     st.error('Имя пользователя и/или пароль введены неверно')
@@ -38,10 +37,11 @@ if authentication_status is not True:
                         location="main",
                         preauthorization=False)
             if email_of_registered_user:
-                with open('configuration/users.yaml', 'w') as file:
-                    yaml.dump(config, file, default_flow_style=False)
-                st.rerun()
-                st.success('User registered successfully')
+                if add_user(config=config):
+                    st.success("User registered successfully")
+                else:
+                    st.error("Could not register user")
+
         except Exception as e:
             st.error(e)
 
@@ -57,19 +57,7 @@ if authentication_status is True:
                          location='sidebar')
 
 
-# cred = credentials.Certificate('configuration/m8-agency-2e7b37294714.json')
-# #firebase_admin.initialize_app(cred)
-# db = firestore.client()
-# users_ref = db.collection("users")
-# docs = users_ref.stream()
-#
-# for doc in docs:
-#     st.json(doc.to_dict())
-#
-# doc_ref = db.collection("users")
-# list_of_docs = doc_ref.list_documents()
-# for doc in list_of_docs:
-#     st.write(doc.id)
+
 class User:
     def __init__(self, name: str, email: str, position: str, role: str, free_bonuses: int = 0, reserved_bonuses: int = 0):
         self.name = name
