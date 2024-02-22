@@ -1,14 +1,9 @@
 import streamlit as st
 st.set_page_config(page_title="My performance", layout="wide", initial_sidebar_state="auto")
 import streamlit_authenticator as stauth
-import yaml
-from yaml.loader import SafeLoader
 from components.firebase import get_credentials, add_user
 from components.adminPage import show_admin_page
 # from components.userPage import show_user_page
-import firebase_admin
-from firebase_admin import credentials
-from firebase_admin import firestore
 
 config = get_credentials()
 
