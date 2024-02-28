@@ -1,7 +1,7 @@
 import streamlit as st
 st.set_page_config(page_title="My performance", layout="wide", initial_sidebar_state="auto")
 import streamlit_authenticator as stauth
-from components.firebase import get_credentials, add_user
+from components.firebase import get_credentials, register_user, create_user
 from components.adminPage import show_admin_page
 # from components.userPage import show_user_page
 
@@ -32,11 +32,13 @@ if authentication_status is not True:
                         location="main",
                         preauthorization=False)
             if email_of_registered_user:
-                if add_user(config=config):
-                    st.success("User registered successfully")
+                if register_user(config=config):
+                    if create_user(email=email_of_registered_user, user=username_of_registered_user, name = name_of_registered_user):
+                        st.success("User registered successfully")
+                    else:
+                        st.error("Could not register user")
                 else:
                     st.error("Could not register user")
-
         except Exception as e:
             st.error(e)
 

@@ -1,9 +1,11 @@
 import firebase_admin
 from firebase_admin import credentials
 from firebase_admin import firestore
+import streamlit as st
 
-cred = credentials.Certificate('./configuration/m8-agency-2e7b37294714.json')
-#firebase_admin.initialize_app(cred)
+if not firebase_admin._apps:
+    cred = credentials.Certificate('./configuration/m8-agency-2e7b37294714.json')
+    firebase_admin.initialize_app(cred, name = "fire_connector")
 db = firestore.client()
 
 
@@ -16,13 +18,47 @@ def get_credentials() -> dict():
     return res
 
 
-def add_user(config: dict()) -> dict():
-    for key in list(config.keys()):
-        try:
+def register_user(config: dict()) -> bool:
+    try:
+        for key in config.keys():
             doc_ref = db.collection("credentials").document(key)
-            doc_ref.set(config[key])
-            print("Success!")
-        except Exception as e:
-            print(f"{e}")
-            # Need to add some tracking of errors
-    return True
+            doc_ref.update(config[key])
+        return True
+    except Exception as e:
+        print(f"Error:{e}")
+        return False
+
+def create_user(email: str, user: str, name: str) -> bool:
+    data = {
+        "user_email": email,
+        "user_free_bonuses": 0,
+        "user_name": name,
+        "user_position": "сотрудник",
+        "user_reserved_bonuses": 0,
+        "user_role": "user"
+    }
+    try:
+        collection_ref = db.collection("users")
+        document_ref = collection_ref.document(user)
+        document_ref.set(data)
+        return True
+    except Exception as e:
+        print(e)
+        return False
+
+
+def get_users():
+    doc_ref = db.collection("users")
+    docs = doc_ref.stream()
+    res = dict()
+    for doc in docs:
+        res[doc.id] = doc.to_dict()
+    return res
+
+def update_value(collection: str, document: str, field: str, value: any):
+    try:
+        doc_ref = db.collection(collection).document(document)
+        doc_ref.update({field: value})
+        return True
+    except Exception as e:
+        return False
