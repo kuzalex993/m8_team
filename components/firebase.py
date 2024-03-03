@@ -31,6 +31,7 @@ def register_user(config: dict()) -> bool:
         print(f"Error:{e}")
         return False
 
+
 def create_user(email: str, user: str, name: str) -> bool:
     data = {
         "user_email": email,
@@ -51,12 +52,14 @@ def create_user(email: str, user: str, name: str) -> bool:
 
 
 def get_users():
+    print("Retrieve users data")
     doc_ref = db.collection("users")
     docs = doc_ref.stream()
     res = dict()
     for doc in docs:
         res[doc.id] = doc.to_dict()
     return res
+
 
 def update_value(collection: str, document: str, field: str, value: any):
     try:
@@ -65,3 +68,10 @@ def update_value(collection: str, document: str, field: str, value: any):
         return True
     except Exception as e:
         return False
+
+def get_challenges() -> list():
+    print("Retrieve challenges data")
+    doc_ref = db.collection("challenges")
+    docs = doc_ref.stream()
+    items = list(map(lambda x: {**x.to_dict(), 'id': x.id}, docs))
+    return items
