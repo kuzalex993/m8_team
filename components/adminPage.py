@@ -1,11 +1,12 @@
 import pandas as pd
 import streamlit as st
 from streamlit_option_menu import option_menu
-from datetime import date, timedelta
+from datetime import date, timedelta, datetime
+
 
 import logging
 
-from components.firebase import get_credentials, get_users, update_value, get_challenges
+from components.firebase import get_credentials, get_users, update_value, get_challenges, add_new_document, update_document
 
 from firebase_admin import firestore
 import firebase_admin
@@ -46,26 +47,57 @@ def update_table_update_reward():
     st.session_state.edit_reward_price_widget = None
 
 
-def update_table_create_new_challenge():
+def add_new_challenge():
     st.session_state.task_description = st.session_state.task_disc_widget
     st.session_state.task_award = st.session_state.task_award_widget
     st.session_state.task_planned_time = st.session_state.task_planned_time_widget
+
+    new_task = {
+        "challenge_description": st.session_state.task_description,
+        "challenge_reward": st.session_state.task_award,
+        "challenge_planned_time_completion": st.session_state.task_planned_time,
+        "challenge_active": True,
+        "challenge_date_update": datetime.utcnow().strftime("%Y-%m-%dT%H:%M:%S.%fZ")
+    }
+    if add_new_document(collection_name="challenges", document_data=new_task):
+        st.session_state.transaction_status = True
 
     # clean text fields
     st.session_state.task_disc_widget = None
     st.session_state.task_award_widget = None
     st.session_state.task_planned_time_widget = None
 
+    # retrieve updated data from firebase
+    st.session_state.challenge_df = get_challenges_df()
 
-def update_table_update_challenge():
+
+def update_table_update_challenge(challenge_id):
     st.session_state.task_description = st.session_state.edit_challenge_disc_widget
     st.session_state.task_award = st.session_state.edit_challenge_reward_widget
     st.session_state.task_planned_time = st.session_state.edit_challenge_planned_time_widget
+    st.session_state.challenge_id_to_edit = challenge_id
+
+    edited_task = {
+        "challenge_description": st.session_state.task_description,
+        "challenge_reward": st.session_state.task_award,
+        "challenge_planned_time_completion": st.session_state.task_planned_time,
+        "challenge_active": True,
+        "challenge_date_update": datetime.utcnow().strftime("%Y-%m-%dT%H:%M:%S.%fZ")
+    }
+    if update_document(collection_name="challenges",
+                       document_id=st.session_state.challenge_id_to_edit,
+                       document_data=edited_task):
+        st.session_state.transaction_status = True
+
 
     # clean text fields
+    st.session_state.challenge_to_edit = None
     st.session_state.edit_challenge_disc_widget = None
     st.session_state.edit_challenge_reward_widget = None
     st.session_state.edit_challenge_planned_time_widget = None
+
+    # retrieve updated data from firebase
+    st.session_state.challenge_df = get_challenges_df()
 
 @st.cache_data
 def get_user_bonus(selected_user_name: str) -> int:
@@ -84,12 +116,16 @@ def get_users_map() -> dict():
             user_map[value["name"]] = key
     return user_map
 
-@st.cache_data
+
 def get_challenges_df():
     print("Getting challenges list")
     challenges = get_challenges()
+    # Convert challenge_date_update to string format
+    for challenge in challenges:
+        challenge['challenge_date_update'] = str(challenge['challenge_date_update'])
+
+    # Create DataFrame
     df = pd.DataFrame(challenges)
-    #df.set_index('id', inplace=True)
     return df
 
 def show_admin_page():
@@ -103,6 +139,12 @@ def show_admin_page():
         st.session_state.reward_price = ""
     if "bonus_delta" not in st.session_state:
         st.session_state.bonus_delta = None
+    if "challenge_id_to_edit"  not in st.session_state:
+        st.session_state.challenge_id_to_edit = None
+    if "challenge_df" not in st.session_state:
+        st.session_state.challenge_df = get_challenges_df()
+    if "transaction_status" not in st.session_state:
+        st.session_state.transaction_status = False
 
     with st.sidebar:
         selected = option_menu("M8.Agenсy", ["Сотрудники", "Задания", "Награды", "Аналитика"],
@@ -145,92 +187,76 @@ def show_admin_page():
                         st.error("Operation failed")
     elif selected == "Задания":
         st.subheader("Управление заданиями")
-        challenges_df = get_challenges_df()
-        #challenges_list = challenges_df['challenge_description'].tolist()
-        # with st.expander(label="Добавление заданий в базу данных :new:", expanded=True):
-        #     col1, col2 = st.columns(2)
-        #     new_task = dict()
-        #     new_task_df = pd.DataFrame()
-        #     with col1:
-        #         st.text_area(label="Задания", key="task_disc_widget",
-        #                      placeholder="Сформулируйте задание",
-        #                      max_chars=200, height=180)
-        #     with col2:
-        #         st.number_input(label="Награда за выполнение",
-        #                         key="task_award_widget",
-        #                         min_value=0, value=None, step=1,
-        #                         placeholder="Введте колличество баллов")
-        #         st.number_input(label="Время на выполнение",
-        #                         key="task_planned_time_widget",
-        #                         min_value=0, value=None, step=1,
-        #                         placeholder="Введите количестов дней...")
-        #         add_new_task = st.button(label="Добавить задание в базу", on_click=update_table_create_new_challenge)
-        #     if add_new_task:
-        #         new_task_active = True
-        #         new_task_date_creation = date.today()
-        #         new_task_id = challenges_df["challenge_id"].max() + 1
-        #         new_task = {
-        #             "challenge_id": new_task_id,
-        #             "challenge_description": st.session_state.task_description,
-        #             "challenge_reward": st.session_state.task_award,
-        #             "challenge_planned_time_completion": st.session_state.task_planned_time,
-        #             "challenge_active": new_task_active,
-        #             "challenge_date_update": new_task_date_creation
-        #         }
-        #         new_task_df = pd.DataFrame([new_task])
-        #         df = pd.concat([challenges_df, new_task_df], ignore_index=True)
-        #         df = conn.update(worksheet=challenge_table_name, data=df)
-        #         st.cache_data.clear()
-        #         st.experimental_rerun()
-        # with st.expander(label="Редактирование задания :pencil2:"):
-        #     col1, col2 = st.columns(2)
-        #     with col1:
-        #         task_to_edit = st.selectbox(label="Задание", placeholder="Выберите задание для изменения",
-        #                                     options=challenges_list, index=None)
-        #         if task_to_edit is None:
-        #             task_disc_to_edit = ""
-        #             task_award_to_edit = None
-        #             task_planned_time_to_edit = None
-        #         else:
-        #             challenge_id = \
-        #             challenges_df[challenges_df["challenge_description"] == task_to_edit]["challenge_id"].values[0]
-        #             selcted_challenge = challenges_df.loc[challenges_df["challenge_id"] == challenge_id]
-        #             task_disc_to_edit = selcted_challenge["challenge_description"].values[0]
-        #             task_award_to_edit = int(selcted_challenge["challenge_reward"].values[0])
-        #             task_planned_time_to_edit = int(selcted_challenge["challenge_planned_time_completion"].values[0])
-        #         st.text_area(value=task_disc_to_edit,
-        #                      label="Задание",
-        #                      key="edit_challenge_disc_widget",
-        #                      placeholder="Название задания",
-        #                      max_chars=200, height=80)
-        #     with col2:
-        #         st.number_input(value=task_award_to_edit,
-        #                         label="Награда за выполнение",
-        #                         key="edit_challenge_reward_widget",
-        #                         min_value=0, step=1,
-        #                         placeholder="Введте колличество баллов")
-        #         st.number_input(value=task_planned_time_to_edit,
-        #                         label="Время на выполнение",
-        #                         key="edit_challenge_planned_time_widget",
-        #                         min_value=0, step=1,
-        #                         placeholder="Введите количестов дней...")
-        #         update_task = st.button(label="Применить изменения", on_click=update_table_update_challenge)
-        #         if update_task:
-        #             challenges_df.loc[
-        #                 challenges_df["challenge_id"] == challenge_id, ["challenge_description",
-        #                                                                 "challenge_reward",
-        #                                                                 "challenge_planned_time_completion",
-        #                                                                 "challenge_date_update"]] = [
-        #                 st.session_state.task_description,
-        #                 st.session_state.task_award,
-        #                 st.session_state.task_planned_time,
-        #                 date.today()]
-        #             update_table_in_db(table_name=challenge_table_name,
-        #                                df=challenges_df,
-        #                                rerun=True)
-        #     st.divider()
-        with st.expander(label="База заданий :books:"):
-            st.dataframe(challenges_df, use_container_width=False,
+        with st.expander(label="Добавление заданий в базу данных :new:", expanded=True):
+            with st.form("new_challenge_form"):
+                col1, col2 = st.columns(2)
+                with col1:
+                    st.text_area(label="Задания", key="task_disc_widget",
+                                 placeholder="Сформулируйте задание",
+                                 max_chars=200, height=120)
+                with col2:
+                    st.number_input(label="Награда за выполнение",
+                                    key="task_award_widget",
+                                    min_value=0, value=None, step=1,
+                                    placeholder="Введте колличество баллов")
+                    st.number_input(label="Время на выполнение",
+                                    key="task_planned_time_widget",
+                                    min_value=0, value=None, step=1,
+                                    placeholder="Введите количестов дней...")
+                add_challenge_btn = st.form_submit_button(label="Добавить задание в базу", on_click=add_new_challenge,
+                                                     use_container_width=True, type="primary")
+                if add_challenge_btn:
+                    if st.session_state.transaction_status:
+                        st.success("Новое задание успешно создано")
+                        st.session_state.transaction_status = False
+                    else:
+                        st.error("Не удалось создать новое задание")
+        with st.expander(label="Редактирование задания :pencil2:"):
+            challenges_df = st.session_state.challenge_df
+            challenges_list = challenges_df['challenge_description'].tolist()
+            challenge_id = None
+            task_to_edit = st.selectbox(label="Задание", placeholder="Выберите задание для изменения",
+                                        key="challenge_to_edit", options=challenges_list, index=None)
+            with st.form("edit_challenge_form"):
+                col1, col2 = st.columns(2)
+                with col1:
+                    if task_to_edit is None:
+                        task_disc_to_edit = ""
+                        task_award_to_edit = None
+                        task_planned_time_to_edit = None
+                    else:
+                        challenge_id = \
+                        challenges_df[challenges_df["challenge_description"] == task_to_edit]["id"].values[0]
+                        selcted_challenge = challenges_df.loc[challenges_df["id"] == challenge_id]
+                        task_disc_to_edit = selcted_challenge["challenge_description"].values[0]
+                        task_award_to_edit = int(selcted_challenge["challenge_reward"].values[0])
+                        task_planned_time_to_edit = int(selcted_challenge["challenge_planned_time_completion"].values[0])
+                    st.text_area(value=task_disc_to_edit,
+                                 label="Новое задание",
+                                 key="edit_challenge_disc_widget",
+                                 placeholder="Описание задания",
+                                 max_chars=200, height=120)
+                with col2:
+                    st.number_input(value=task_award_to_edit,
+                                    label="Новая награда за выполнение",
+                                    key="edit_challenge_reward_widget",
+                                    min_value=0, step=1,
+                                    placeholder="Введте колличество баллов")
+                    st.number_input(value=task_planned_time_to_edit,
+                                    label="Новое время на выполнение",
+                                    key="edit_challenge_planned_time_widget",
+                                    min_value=0, step=1,
+                                    placeholder="Введите количестов дней...")
+                update_challenge_btn = st.form_submit_button(label="Применить изменения", on_click=update_table_update_challenge,
+                                                             args=(challenge_id,), use_container_width=True, type="primary")
+                if update_challenge_btn:
+                    if st.session_state.transaction_status:
+                        st.success("Задание успешно обновлено")
+                        st.session_state.transaction_status = False
+                    else:
+                        st.error("Не удалось обновить задание")
+        with st.expander(label="База заданийvenv :books:"):
+            st.dataframe(st.session_state.challenge_df, use_container_width=False,
                          column_order=("challenge_description", "challenge_reward", "challenge_planned_time_completion",
                                        "challenge_active", "challenge_date_update"),
                          column_config={

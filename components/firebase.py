@@ -75,3 +75,22 @@ def get_challenges() -> list():
     docs = doc_ref.stream()
     items = list(map(lambda x: {**x.to_dict(), 'id': x.id}, docs))
     return items
+
+def add_new_document(collection_name: str, document_data: dict()) -> bool:
+    try:
+        collection_ref = db.collection(collection_name)
+        update_time, document_ref = collection_ref.add(document_data=document_data)
+        print(f"{update_time} Added new document with id {document_ref.id}")
+        return True
+    except Exception as e:
+        print(e)
+        return False
+
+def update_document(collection_name: str, document_id: str, document_data: dict()) -> bool:
+    try:
+        doc_ref = db.collection(collection_name).document(document_id)
+        doc_ref.update(document_data)
+        return True
+    except Exception as e:
+        print(e)
+        return False
