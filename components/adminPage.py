@@ -27,9 +27,21 @@ transaction_type = {
 
 user_map = dict()
 
-def update_user_bonus_table():
-    st.session_state.bonus_delta = st.session_state.new_bonus_delta_widget
-    st.session_state.new_bonus_delta_widget = 0
+def new_user_selected():
+    if st.session_state.selected_user:
+        selected_user_name = st.session_state.users_data_map[st.session_state.selected_user]
+        st.session_state.current_user_balance = get_user_bonus(selected_user_name)
+
+def update_user_bonus(user_name):
+    st.session_state.bonus_delta = st.session_state.additional_bonus_widget
+
+    new_balance = st.session_state.new_user_balance
+    if update_value(collection="users", document=user_name,
+                    field="user_free_bonuses", value=new_balance):
+        st.session_state.transaction_status = True
+    st.session_state.additional_bonus_widget = 0
+    st.session_state.current_user_balance = get_user_bonus(user_name)
+
 
 def update_table_create_new_reward():
     st.session_state.reward_disc = st.session_state.reward_disc_widget
@@ -99,16 +111,13 @@ def update_table_update_challenge(challenge_id):
     # retrieve updated data from firebase
     st.session_state.challenge_df = get_challenges_df()
 
-@st.cache_data
 def get_user_bonus(selected_user_name: str) -> int:
-    print("Getting user bonus")
     users_data = get_users()
     user_account = int(users_data[selected_user_name]["user_free_bonuses"])
     return user_account
 
-@st.cache_data
+
 def get_users_map() -> dict():
-    print("Getting users list")
     cred = get_credentials()
     fire_users = cred["credentials"]["usernames"]
     for key, value in fire_users.items():
@@ -118,7 +127,6 @@ def get_users_map() -> dict():
 
 
 def get_challenges_df():
-    print("Getting challenges list")
     challenges = get_challenges()
     # Convert challenge_date_update to string format
     for challenge in challenges:
@@ -145,50 +153,52 @@ def show_admin_page():
         st.session_state.challenge_df = get_challenges_df()
     if "transaction_status" not in st.session_state:
         st.session_state.transaction_status = False
+    if "users_data_map" not in st.session_state:
+        st.session_state.users_data_map = get_users_map()
+    if "new_user_balance" not in st.session_state:
+        st.session_state.new_user_balance = None
+    if "current_user_balance" not in st.session_state:
+        st.session_state.current_user_balance = None
 
     with st.sidebar:
         selected = option_menu("M8.Agenсy", ["Сотрудники", "Задания", "Награды", "Аналитика"],
                                icons=['house', "list-task", "award"], menu_icon="cast", default_index=0)
-    # initialization of dataframes
-    users_map = get_users_map()
-    users_list = list(users_map.keys())
     if selected == "Сотрудники":
         st.subheader("Сотрудники")
-        selected_user = st.selectbox(label="Cотрудник", index=None, placeholder='Выберите сотрудника',
-                                     options=users_list)
+        users_list = list(st.session_state.users_data_map.keys())
+        selected_user = st.selectbox(label="Cотрудник", index=None, placeholder='Выберите сотрудника', key="selected_user",
+                                     on_change=new_user_selected, options=users_list)
         if selected_user:
+            selected_user_name = st.session_state.users_data_map[selected_user]
             tab1, tab2 = st.tabs(["📈 Управление бонусами", "🗃 Управление задачами"])
-            selected_user_name = users_map[selected_user]
             with tab1:
-                col1, col2 = st.columns(2)
-                with col1:
-                    additional_bonus = st.number_input(label="Бонусы", value=0, placeholder="Введите количество бонусов",
-                                                       key="new_bonus_delta_widget")
-                    operation = st.radio(label="Операция", options=["Добавить", "Вычесть"], horizontal=True)
-                    if operation == "Вычесть":
-                        additional_bonus *= (-1)
-                    add_bonus = st.button("Изменить баланс", on_click=update_user_bonus_table)
-                with col2:
-                    user_account = get_user_bonus(selected_user_name)
-                    metric_value = st.metric(label="Текущий баланс", value=user_account, delta=additional_bonus,
-                              delta_color="normal", help=None, label_visibility="visible")
-                if add_bonus:
-                    new_balance = user_account + int(st.session_state.bonus_delta if operation == "Добавить"
-                                                     else st.session_state.bonus_delta * (-1))
-                    if update_value(collection="users", document=selected_user_name,
-                                    field="user_free_bonuses", value=new_balance):
-                        get_user_bonus.clear()
-                        new_user_account = get_user_bonus(selected_user_name)
-                        metric_value.metric(label="Текущий баланс", value=new_user_account, delta=additional_bonus,
-                              delta_color="normal", help=None, label_visibility="visible")
-                        print(f"Balance of {selected_user} updated")
-                        st.success(f"Balance of {selected_user} updated")
-                    else:
-                        st.error("Operation failed")
+                with st.container():
+                    col1, col2 = st.columns(2)
+                    additional_bonus = 0
+                    with col1:
+                        additional_bonus = st.number_input(label="Бонусы", value=0, placeholder="Введите количество бонусов",
+                                                           key="additional_bonus_widget")
+                        operation = st.radio(label="Операция", options=["Добавить", "Вычесть"], horizontal=True)
+                        if operation == "Вычесть":
+                            additional_bonus *= (-1)
+                    with col2:
+                        metric_value = st.metric(label="Текущий баланс", value=st.session_state.current_user_balance,
+                                                 delta=None if additional_bonus==0 else additional_bonus,
+                                                 delta_color="normal", help=None, label_visibility="visible")
+                        st.session_state.new_user_balance = st.session_state.current_user_balance + additional_bonus
+                    add_bonus = st.button("Изменить баланс", on_click=update_user_bonus, args=(selected_user_name,),
+                                          use_container_width=True, type="primary")
+
+                    if add_bonus:
+                        if st.session_state.transaction_status:
+                            st.success(f"Баланс пользователя {selected_user} обновлен")
+                            st.session_state.transaction_status = False
+                        else:
+                            st.error("Не удалось обновить баланс")
     elif selected == "Задания":
         st.subheader("Управление заданиями")
         with st.expander(label="Добавление заданий в базу данных :new:", expanded=True):
-            with st.form("new_challenge_form"):
+            with st.form("add_challenge_form"):
                 col1, col2 = st.columns(2)
                 with col1:
                     st.text_area(label="Задания", key="task_disc_widget",

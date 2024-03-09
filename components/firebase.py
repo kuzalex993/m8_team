@@ -13,6 +13,7 @@ db = firestore.client(app)
 
 
 def get_credentials() -> dict():
+    print("Getting credentials")
     doc_ref = db.collection("credentials")
     docs = doc_ref.stream()
     res = dict()
