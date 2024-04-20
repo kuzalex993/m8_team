@@ -6,15 +6,14 @@ from components.adminPage import show_admin_page
 
 import firebase_admin
 from firebase_admin import credentials
-
-config = get_credentials()
-
+if "users_config" not in st.session_state or  st.session_state.users_config is None:
+    st.session_state.users_config = get_credentials()
 authenticator = stauth.Authenticate(
-    config['credentials'],
-    config['cookie']['name'],
-    config['cookie']['key'],
-    config['cookie']['expiry_days'],
-    config['preauthorized']
+    st.session_state.users_config['credentials'],
+    st.session_state.users_config['cookie']['name'],
+    st.session_state.users_config['cookie']['key'],
+    st.session_state.users_config['cookie']['expiry_days'],
+    st.session_state.users_config['preauthorized']
 )
 name, authentication_status, username = authenticator.login(location='main',
                                                             fields={'Form name': 'Войти в аккаунт',
@@ -34,7 +33,7 @@ if authentication_status is not True:
                         location="main",
                         preauthorization=False)
             if email_of_registered_user:
-                if register_user(config=config):
+                if register_user(config=st.session_state.users_config):
                     if create_user(email=email_of_registered_user, user=username_of_registered_user, name = name_of_registered_user):
                         st.success("User registered successfully")
                     else:

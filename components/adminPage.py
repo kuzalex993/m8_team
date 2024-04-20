@@ -6,7 +6,7 @@ from datetime import date, timedelta, datetime
 
 import logging
 
-from components.firebase import get_credentials, get_users, update_value, get_challenges, add_new_document, update_document
+from components.firebase import get_credentials, get_users, update_value, get_challenges, add_new_document, update_document, get_rewards
 
 from firebase_admin import firestore
 import firebase_admin
@@ -43,31 +43,43 @@ def update_user_bonus(user_name):
     st.session_state.current_user_balance = get_user_bonus(user_name)
 
 
-def update_table_create_new_reward():
-    st.session_state.reward_disc = st.session_state.reward_disc_widget
-    st.session_state.reward_price = st.session_state.reward_price_widget
+def add_new_reward():
+    new_reward = {
+        "reward_description": st.session_state.reward_description_widget,
+        "reward_price": st.session_state.reward_price_widget
+    }
+    if add_new_document(collection_name="rewards", document_data=new_reward):
+        st.session_state.transaction_status = True
+    # clean text fields
+    # st.session_state.reward_description_widget = None
+    # st.session_state.reward_price_widget = None
 
-    st.session_state.reward_disc_widget = None
-    st.session_state.reward_price_widget = None
+    # retrieve updated data from firebase
+    st.session_state.rewards_df = get_rewards_df()
+
+def update_reward(reward_id):
+    edited_reward = {
+        "reward_description": st.session_state.edit_reward_description_widget,
+        "reward_price": st.session_state.edit_reward_price_widget
+    }
+    if update_document(collection_name="rewards",
+                       document_id=reward_id,
+                       document_data=edited_reward):
+        st.session_state.transaction_status = True
 
 
-def update_table_update_reward():
-    st.session_state.reward_disc = st.session_state.edit_reward_disc_widget
-    st.session_state.reward_price = st.session_state.edit_reward_price_widget
+    # clean text fields
+    # st.session_state.edit_reward_description_widget = None
+    # st.session_state.edit_reward_price_widget = None
 
-    st.session_state.edit_reward_disc_widget = None
-    st.session_state.edit_reward_price_widget = None
-
+    # retrieve updated data from firebase
+    st.session_state.rewards_df = get_rewards_df()
 
 def add_new_challenge():
-    st.session_state.task_description = st.session_state.task_disc_widget
-    st.session_state.task_award = st.session_state.task_award_widget
-    st.session_state.task_planned_time = st.session_state.task_planned_time_widget
-
     new_task = {
-        "challenge_description": st.session_state.task_description,
-        "challenge_reward": st.session_state.task_award,
-        "challenge_planned_time_completion": st.session_state.task_planned_time,
+        "challenge_description": st.session_state.task_description_widget,
+        "challenge_reward": st.session_state.task_award_widget,
+        "challenge_planned_time_completion": st.session_state.task_planned_time_widget,
         "challenge_active": True,
         "challenge_date_update": datetime.utcnow().strftime("%Y-%m-%dT%H:%M:%S.%fZ")
     }
@@ -75,38 +87,33 @@ def add_new_challenge():
         st.session_state.transaction_status = True
 
     # clean text fields
-    st.session_state.task_disc_widget = None
-    st.session_state.task_award_widget = None
-    st.session_state.task_planned_time_widget = None
+    # st.session_state.task_description_widget = None
+    # st.session_state.task_award_widget = None
+    # st.session_state.task_planned_time_widget = None
 
     # retrieve updated data from firebase
     st.session_state.challenge_df = get_challenges_df()
 
 
-def update_table_update_challenge(challenge_id):
-    st.session_state.task_description = st.session_state.edit_challenge_disc_widget
-    st.session_state.task_award = st.session_state.edit_challenge_reward_widget
-    st.session_state.task_planned_time = st.session_state.edit_challenge_planned_time_widget
-    st.session_state.challenge_id_to_edit = challenge_id
-
+def update_challenge(challenge_id):
     edited_task = {
-        "challenge_description": st.session_state.task_description,
-        "challenge_reward": st.session_state.task_award,
-        "challenge_planned_time_completion": st.session_state.task_planned_time,
+        "challenge_description": st.session_state.edit_challenge_description_widget,
+        "challenge_reward": st.session_state.edit_challenge_reward_widget,
+        "challenge_planned_time_completion": st.session_state.edit_challenge_planned_time_widget,
         "challenge_active": True,
         "challenge_date_update": datetime.utcnow().strftime("%Y-%m-%dT%H:%M:%S.%fZ")
     }
     if update_document(collection_name="challenges",
-                       document_id=st.session_state.challenge_id_to_edit,
+                       document_id=challenge_id,
                        document_data=edited_task):
         st.session_state.transaction_status = True
 
 
     # clean text fields
-    st.session_state.challenge_to_edit = None
-    st.session_state.edit_challenge_disc_widget = None
-    st.session_state.edit_challenge_reward_widget = None
-    st.session_state.edit_challenge_planned_time_widget = None
+    # st.session_state.challenge_to_edit = None
+    # st.session_state.edit_challenge_description_widget = None
+    # st.session_state.edit_challenge_reward_widget = None
+    # st.session_state.edit_challenge_planned_time_widget = None
 
     # retrieve updated data from firebase
     st.session_state.challenge_df = get_challenges_df()
@@ -118,7 +125,7 @@ def get_user_bonus(selected_user_name: str) -> int:
 
 
 def get_users_map() -> dict():
-    cred = get_credentials()
+    cred = st.session_state.users_config
     fire_users = cred["credentials"]["usernames"]
     for key, value in fire_users.items():
         if key != "admin":
@@ -136,25 +143,33 @@ def get_challenges_df():
     df = pd.DataFrame(challenges)
     return df
 
+def get_rewards_df():
+    rewards = get_rewards()
+    df = pd.DataFrame(rewards)
+    return df
+
+
 def show_admin_page():
     # initialize session variables
     if "task_description" not in st.session_state:
         st.session_state.task_description = ""
         st.session_state.task_award = ""
         st.session_state.task_planned_time = ""
-    if "reward_disc" not in st.session_state:
-        st.session_state.reward_disc = ""
+    if "reward_description" not in st.session_state:
+        st.session_state.reward_description = ""
         st.session_state.reward_price = ""
     if "bonus_delta" not in st.session_state:
         st.session_state.bonus_delta = None
-    if "challenge_id_to_edit"  not in st.session_state:
-        st.session_state.challenge_id_to_edit = None
     if "challenge_df" not in st.session_state:
         st.session_state.challenge_df = get_challenges_df()
+    if "rewards_df" not in st.session_state:
+        st.session_state.rewards_df = get_rewards_df()
     if "transaction_status" not in st.session_state:
         st.session_state.transaction_status = False
     if "users_data_map" not in st.session_state:
         st.session_state.users_data_map = get_users_map()
+
+    # to check if wee need these variables in session_state
     if "new_user_balance" not in st.session_state:
         st.session_state.new_user_balance = None
     if "current_user_balance" not in st.session_state:
@@ -201,7 +216,7 @@ def show_admin_page():
             with st.form("add_challenge_form"):
                 col1, col2 = st.columns(2)
                 with col1:
-                    st.text_area(label="Задания", key="task_disc_widget",
+                    st.text_area(label="Задания", key="task_description_widget",
                                  placeholder="Сформулируйте задание",
                                  max_chars=200, height=120)
                 with col2:
@@ -231,19 +246,19 @@ def show_admin_page():
                 col1, col2 = st.columns(2)
                 with col1:
                     if task_to_edit is None:
-                        task_disc_to_edit = ""
+                        task_description_to_edit = ""
                         task_award_to_edit = None
                         task_planned_time_to_edit = None
                     else:
                         challenge_id = \
                         challenges_df[challenges_df["challenge_description"] == task_to_edit]["id"].values[0]
                         selcted_challenge = challenges_df.loc[challenges_df["id"] == challenge_id]
-                        task_disc_to_edit = selcted_challenge["challenge_description"].values[0]
+                        task_description_to_edit = selcted_challenge["challenge_description"].values[0]
                         task_award_to_edit = int(selcted_challenge["challenge_reward"].values[0])
                         task_planned_time_to_edit = int(selcted_challenge["challenge_planned_time_completion"].values[0])
-                    st.text_area(value=task_disc_to_edit,
+                    st.text_area(value=task_description_to_edit,
                                  label="Новое задание",
-                                 key="edit_challenge_disc_widget",
+                                 key="edit_challenge_description_widget",
                                  placeholder="Описание задания",
                                  max_chars=200, height=120)
                 with col2:
@@ -257,7 +272,7 @@ def show_admin_page():
                                     key="edit_challenge_planned_time_widget",
                                     min_value=0, step=1,
                                     placeholder="Введите количестов дней...")
-                update_challenge_btn = st.form_submit_button(label="Применить изменения", on_click=update_table_update_challenge,
+                update_challenge_btn = st.form_submit_button(label="Применить изменения", on_click=update_challenge,
                                                              args=(challenge_id,), use_container_width=True, type="primary")
                 if update_challenge_btn:
                     if st.session_state.transaction_status:
@@ -265,7 +280,7 @@ def show_admin_page():
                         st.session_state.transaction_status = False
                     else:
                         st.error("Не удалось обновить задание")
-        with st.expander(label="База заданийvenv :books:"):
+        with st.expander(label="База заданий :books:"):
             st.dataframe(st.session_state.challenge_df, use_container_width=False,
                          column_order=("challenge_description", "challenge_reward", "challenge_planned_time_completion",
                                        "challenge_active", "challenge_date_update"),
@@ -287,3 +302,63 @@ def show_admin_page():
                          },
                          hide_index=True
                          )
+    elif selected == "Награды":
+        st.subheader("Управление наградами")
+        with st.expander(label="Добавить новую награду :new:", expanded=True):
+            with st.form("add_reward_form"):
+                col1, col2 = st.columns(2)
+                with col1:
+                    st.text_area(label="Награда", key="reward_description_widget",
+                                 placeholder="Добавьте описание награды",
+                                 max_chars=200)
+                with col2:
+                    st.number_input(label="Стоимость награды",
+                                    key="reward_price_widget",
+                                    min_value=0, value=None, step=1,
+                                    placeholder="Введте колличество баллов")
+                add_reward_btn = st.form_submit_button(label="Добавить награду в базу", on_click=add_new_reward,
+                                                     use_container_width=True, type="primary")
+                if add_reward_btn:
+                    if st.session_state.transaction_status:
+                        st.success("Новая награда успешно создана")
+                        st.session_state.transaction_status = False
+                    else:
+                        st.error("Не удалось создать новую награду")
+        with st.expander(label="Редактирование награды :pencil2:"):
+            rewards_df = st.session_state.rewards_df
+            rewards_list = rewards_df['reward_description'].tolist()
+            reward_id = None
+            reward_to_edit = st.selectbox(label="Награда", placeholder="Выберите награду для изменения",
+                                        key="reward_to_edit", options=rewards_list, index=None)
+            with st.form("edit_reward_form"):
+                col1, col2 = st.columns(2)
+                with col1:
+                    if reward_to_edit is None:
+                        reward_description_to_edit = ""
+                        reward_price_to_edit = None
+                    else:
+                        reward_id = \
+                        rewards_df[rewards_df["reward_description"] == reward_to_edit]["id"].values[0]
+                        selcted_reward = rewards_df.loc[rewards_df["id"] == reward_id]
+                        reward_description_to_edit = selcted_reward["reward_description"].values[0]
+                        reward_price_to_edit = int(selcted_reward["reward_price"].values[0])
+                    st.text_area(value=reward_description_to_edit,
+                                 label="Новая нраграда",
+                                 key="edit_reward_description_widget",
+                                 placeholder="Новое опасание нраграды",
+                                 max_chars=200)
+                with col2:
+                    st.number_input(value=reward_price_to_edit, 
+                                    label="Новая стоимость награды",
+                                    key="edit_reward_price_widget",
+                                    min_value=0, step=1,
+                                    placeholder="Введте колличество баллов")
+
+                update_reward_btn = st.form_submit_button(label="Применить изменения", on_click=update_reward,
+                                                             args=(reward_id,), use_container_width=True, type="primary")
+                if update_reward_btn:
+                    if st.session_state.transaction_status:
+                        st.success("Награда успешно обновлена")
+                        st.session_state.transaction_status = False
+                    else:
+                        st.error("Не удалось обновить награду")

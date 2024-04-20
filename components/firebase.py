@@ -77,6 +77,13 @@ def get_challenges() -> list():
     items = list(map(lambda x: {**x.to_dict(), 'id': x.id}, docs))
     return items
 
+def get_rewards() -> list():
+    print("Retrieve rewards data")
+    doc_ref = db.collection("rewards")
+    docs = doc_ref.stream()
+    items = list(map(lambda x: {**x.to_dict(), 'id': x.id}, docs))
+    return items
+
 def add_new_document(collection_name: str, document_data: dict()) -> bool:
     try:
         collection_ref = db.collection(collection_name)
