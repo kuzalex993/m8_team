@@ -256,25 +256,30 @@ def show_admin_page():
                             st.error("Не удалось назначить задание")
                 st.divider()
                 with st.container():
-                    st.dataframe(st.session_state.user_challenge_df, use_container_width=False,
-                                 column_order=("challenge_descripion", "start_date", "planned_finish_date",
-                                               "challenge_status","fact_finish_date","challenge_success"),
-                                               column_config={
-                                                            "challenge_descripion": "Описание задания",
-                                                            "start_date": st.column_config.DateColumn(label="Дата начала",
-                                                                                                        format="DD/MM/YYYY"),
-                                                            "planned_finish_date": st.column_config.DateColumn(label="Дата окончания",
-                                                                                                                format="DD/MM/YYYY"),
-                                                            "challenge_status": st.column_config.TextColumn(label="Статус задания",
-                                                                                                            default=False),
-                                                            "fact_finish_date": st.column_config.DateColumn(label="Фактическая дата завершения",
-                                                                                                            format="DD.MM.YYYY"),
-                                                            "challenge_success": st.column_config.TextColumn(label="Успех прохождения",
-                                                                                                            default=False),                                                                                                
-                                                                                               
-                         },
-                         hide_index=True
-                         )
+                    current_user_challenge_df = st.session_state.user_challenge_df\
+                        .loc[(st.session_state.user_challenge_df["user_name"]==selected_user_name) & (st.session_state.user_challenge_df["challenge_status"]!="complete")]
+                    if current_user_challenge_df.shape[0] == 0:
+                        st.info(f"Пользователь {selected_user_name} пока не имеет открытых заданий")
+                    else:
+                        st.dataframe(current_user_challenge_df, use_container_width=False,
+                                    column_order=("challenge_descripion", "start_date", "planned_finish_date",
+                                                "challenge_status","fact_finish_date","challenge_success"),
+                                                column_config={
+                                                                "challenge_descripion": "Описание задания",
+                                                                "start_date": st.column_config.DateColumn(label="Дата начала",
+                                                                                                            format="DD/MM/YYYY"),
+                                                                "planned_finish_date": st.column_config.DateColumn(label="Дата окончания",
+                                                                                                                    format="DD/MM/YYYY"),
+                                                                "challenge_status": st.column_config.TextColumn(label="Статус задания",
+                                                                                                                default=False),
+                                                                "fact_finish_date": st.column_config.DateColumn(label="Фактическая дата завершения",
+                                                                                                                format="DD.MM.YYYY"),
+                                                                "challenge_success": st.column_config.TextColumn(label="Успех прохождения",
+                                                                                                                default=False),                                                                                                
+                                                                                                
+                            },
+                            hide_index=True
+                            )
     elif selected == "Задания":
         st.subheader("Управление заданиями")
         with st.expander(label="Добавление заданий в базу данных :new:", expanded=True):
