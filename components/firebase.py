@@ -1,8 +1,7 @@
-import streamlit as st
-
 from firebase_admin import firestore
 import firebase_admin
 from firebase_admin import credentials
+from datetime import datetime, date, timedelta
 try:
     app = firebase_admin.get_app("firebase_connector")
 except ValueError:
@@ -70,16 +69,9 @@ def update_value(collection: str, document: str, field: str, value: any):
     except Exception as e:
         return False
 
-def get_challenges() -> list():
-    print("Retrieve challenges data")
-    doc_ref = db.collection("challenges")
-    docs = doc_ref.stream()
-    items = list(map(lambda x: {**x.to_dict(), 'id': x.id}, docs))
-    return items
-
-def get_rewards() -> list():
-    print("Retrieve rewards data")
-    doc_ref = db.collection("rewards")
+def get_collection(collection_name: str):
+    print(f"Retrieve {collection_name} data")
+    doc_ref = db.collection(collection_name)
     docs = doc_ref.stream()
     items = list(map(lambda x: {**x.to_dict(), 'id': x.id}, docs))
     return items
@@ -102,3 +94,35 @@ def update_document(collection_name: str, document_id: str, document_data: dict(
     except Exception as e:
         print(e)
         return False
+    
+def put_into_user_bonus_collection(user_id: int, transaction_type: str, bonus_value: int, event_type: str, event_id: int):
+    new_record = {
+        "user_id": user_id,
+        "transaction_type": transaction_type,
+        "bonus_value": bonus_value,
+        "event_type": event_type,
+        "event_id":event_id,
+        "date": datetime.utcnow().strftime("%Y-%m-%dT%H:%M:%S.%fZ")
+    }
+    if add_new_document("user_bonus", new_record):
+        return True
+    else:
+        False
+def put_into_user_challenge_collection(user_id: int, user_name: str, challenge_id: int, 
+                                       challenge_descripion: str, start_date: date, challenge_duration: int,
+                                       ):
+    new_record = {
+        "user_id": user_id,
+        "user_name": user_name,
+        "challenge_id": challenge_id,
+        "challenge_descripion": challenge_descripion,
+        "start_date": start_date.strftime("%Y-%m-%d"),
+        "planned_finish_date": (start_date+ timedelta(days=challenge_duration)).strftime("%Y-%m-%d"),
+        "fact_finish_date": None,
+        "challenge_status": "new",
+        "challenge_success": "uknonwn"
+    }
+    if add_new_document("user_challenge", new_record):
+        return True
+    else:
+        False
