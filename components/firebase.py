@@ -11,7 +11,7 @@ except ValueError:
 db = firestore.client(app)
 
 
-def get_credentials() -> dict():
+def get_credentials() -> dict:
     print("Getting credentials")
     doc_ref = db.collection("credentials")
     docs = doc_ref.stream()
@@ -21,7 +21,7 @@ def get_credentials() -> dict():
     return res
 
 
-def register_user(config: dict()) -> bool:
+def register_user(config: dict) -> bool:
     try:
         for key in config.keys():
             doc_ref = db.collection("credentials").document(key)
@@ -76,7 +76,19 @@ def get_collection(collection_name: str):
     items = list(map(lambda x: {**x.to_dict(), 'id': x.id}, docs))
     return items
 
-def add_new_document(collection_name: str, document_data: dict()) -> bool:
+def get_document(collection_name: str, document_name: str) -> dict:
+    print(f"Retrieving data: collection - {collection_name}, document - {document_name}")
+    try:
+        doc_ref = db.collection(collection_name).document(document_name)
+        doc = doc_ref.get()
+        doc_data = doc.to_dict()
+        return doc_data
+    except Exception as e:
+        print(e)
+        return False
+
+
+def add_new_document(collection_name: str, document_data: dict) -> bool:
     try:
         collection_ref = db.collection(collection_name)
         update_time, document_ref = collection_ref.add(document_data=document_data)

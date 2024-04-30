@@ -3,6 +3,7 @@ st.set_page_config(page_title="My performance", layout="wide", initial_sidebar_s
 import streamlit_authenticator as stauth
 from components.firebase import get_credentials, register_user, create_user
 from components.adminPage import show_admin_page
+from components.userPage import show_user_page
 
 import firebase_admin
 from firebase_admin import credentials
@@ -15,11 +16,11 @@ authenticator = stauth.Authenticate(
     st.session_state.users_config['cookie']['expiry_days'],
     st.session_state.users_config['preauthorized']
 )
-name, authentication_status, username = authenticator.login(location='main',
-                                                            fields={'Form name': 'Войти в аккаунт',
-                                                                    'Username': 'Имя пользователя',
-                                                                    'Password': 'Пароль',
-                                                                    'Login': 'Войти'})
+name, authentication_status, st.session_state.username = authenticator.login(location='main',
+                                                                            fields={'Form name': 'Войти в аккаунт',
+                                                                                    'Username': 'Имя пользователя',
+                                                                                    'Password': 'Пароль',
+                                                                                    'Login': 'Войти'})
 
 if authentication_status == False:
     st.error('Имя пользователя и/или пароль введены неверно')
@@ -44,13 +45,14 @@ if authentication_status is not True:
             st.error(e)
 
 if authentication_status is True:
-    if username=='admin':
+    if st.session_state.username == 'admin':
         with st.sidebar:
             st.write(f'Welcome *{name}*')
         show_admin_page()
     else:
         with st.sidebar:
             st.write(f'Welcome *{name}*')
+        show_user_page()
     authenticator.logout(button_name='Выйти',
                          location='sidebar')
 
