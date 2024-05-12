@@ -16,7 +16,7 @@ authenticator = stauth.Authenticate(
     st.session_state.users_config['cookie']['expiry_days'],
     st.session_state.users_config['preauthorized']
 )
-name, authentication_status, st.session_state.username = authenticator.login(location='main',
+st.session_state.user_name, authentication_status, st.session_state.user_id = authenticator.login(location='main',
                                                                             fields={'Form name': 'Войти в аккаунт',
                                                                                     'Username': 'Имя пользователя',
                                                                                     'Password': 'Пароль',
@@ -36,7 +36,7 @@ if authentication_status is not True:
             if email_of_registered_user:
                 if register_user(config=st.session_state.users_config):
                     if create_user(email=email_of_registered_user, user=username_of_registered_user, name = name_of_registered_user):
-                        st.success("User registered successfully")
+                        st.success("Пользователь успешно зарегистрирован")
                     else:
                         st.error("Could not register user")
                 else:
@@ -45,13 +45,9 @@ if authentication_status is not True:
             st.error(e)
 
 if authentication_status is True:
-    if st.session_state.username == 'admin':
-        with st.sidebar:
-            st.write(f'Welcome *{name}*')
+    if st.session_state.user_id == 'admin':
         show_admin_page()
     else:
-        with st.sidebar:
-            st.write(f'Welcome *{name}*')
         show_user_page()
     authenticator.logout(button_name='Выйти',
                          location='sidebar')

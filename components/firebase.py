@@ -1,6 +1,8 @@
 from firebase_admin import firestore
 import firebase_admin
 from firebase_admin import credentials
+from google.cloud.firestore_v1.base_query import FieldFilter
+from google.cloud.firestore_v1.base_query import BaseCompositeFilter
 from datetime import datetime, date, timedelta
 try:
     app = firebase_admin.get_app("firebase_connector")
@@ -87,6 +89,16 @@ def get_document(collection_name: str, document_name: str) -> dict:
         print(e)
         return False
 
+def get_value(collection_name: str, document_name: str, field_name: str):
+    try:
+        doc_ref = db.collection(collection_name).document(document_name)
+        doc = doc_ref.get()
+        doc_data = doc.to_dict()
+        field_value = doc_data[field_name]
+        return field_value
+    except Exception as e:
+        print(e)
+        return False
 
 def add_new_document(collection_name: str, document_data: dict) -> bool:
     try:
@@ -122,6 +134,7 @@ def put_into_user_bonus_collection(user_id: int, transaction_type: str, bonus_va
         False
 def put_into_user_challenge_collection(user_id: int, user_name: str, challenge_id: int, 
                                        challenge_descripion: str, start_date: date, challenge_duration: int,
+                                       challenge_creation_date: datetime
                                        ):
     new_record = {
         "user_id": user_id,
@@ -132,9 +145,39 @@ def put_into_user_challenge_collection(user_id: int, user_name: str, challenge_i
         "planned_finish_date": (start_date+ timedelta(days=challenge_duration)).strftime("%Y-%m-%d"),
         "fact_finish_date": None,
         "challenge_status": "new",
-        "challenge_success": "uknonwn"
+        "challenge_success": "uknonwn",
+        "challenge_creation_date": challenge_creation_date
     }
     if add_new_document("user_challenge", new_record):
         return True
     else:
         False
+
+def get_user_challenges(user_id: str, challenge_status: str):
+
+    print(f"Retrieving challenges of {user_id}")
+    try:
+        filter_list = [FieldFilter("user_id", "==", user_id),FieldFilter("challenge_status", "==", challenge_status)]
+        docs = db.collection("user_challenge").where(filter=BaseCompositeFilter("AND",filter_list)).stream()
+        return docs
+    except Exception as e:
+        print(e)
+        return False
+    
+def get_user_rewards(user_id: str):
+    print(f"Retrieving rewards of {user_id}")
+    if user_id != "all":
+        try:
+            filter_list = [FieldFilter("user_id", "==", user_id)]
+            docs = db.collection("user_reward").where(filter=BaseCompositeFilter("AND",filter_list)).stream()
+            return docs
+        except Exception as e:
+            print(e)
+            return False
+    else:
+        try:
+            docs = db.collection("user_reward").stream()
+            return docs
+        except Exception as e:
+            print(e)
+            return False

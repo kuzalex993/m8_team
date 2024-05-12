@@ -8,7 +8,7 @@ import logging
 
 from components.firebase import (put_into_user_bonus_collection, put_into_user_challenge_collection,
                                  get_users, update_value, add_new_document,
-                                 get_collection, update_document)
+                                 get_collection, update_document, get_user_rewards)
 
 from firebase_admin import firestore
 import firebase_admin
@@ -65,7 +65,7 @@ def update_reward(reward_id):
     edited_reward = {
         "reward_description": st.session_state.edit_reward_description_widget,
         "reward_price": st.session_state.edit_reward_price_widget,
-        "reward_last_update": datetime.utcnow().strftime("%Y-%m-%dT%H:%M:%S.%fZ")
+        "reward_last_update": datetime.now().strftime("%Y-%m-%dT%H:%M:%S.%fZ")
     }
     if update_document(collection_name="rewards",
                        document_id=reward_id,
@@ -83,7 +83,8 @@ def add_new_user_challenge(challenge_id: int, challenge_duration: int):
                                                     challenge_id=challenge_id,
                                                     challenge_descripion=st.session_state.challenge_to_assign_description_widget,
                                                     start_date=st.session_state.challenge_to_assign_start_date_widget,
-                                                    challenge_duration=challenge_duration
+                                                    challenge_duration=challenge_duration,
+                                                    challenge_creation_date=datetime.now().strftime("%Y-%m-%dT%H:%M:%S.%fZ") 
                                                     )
         if status:
             st.session_state.transaction_status = True
@@ -185,7 +186,7 @@ def show_admin_page():
         st.session_state.current_user_balance = None
 
     with st.sidebar:
-        selected = option_menu("M8.Agenсy", ["Сотрудники", "Задания", "Награды", "Аналитика"],
+        selected = option_menu("M8.Agenсy", ["Сотрудники", "Задания", "Награды", "Запросы"],
                                icons=['house', "list-task", "award"], menu_icon="cast", default_index=0)
     if selected == "Сотрудники":
         st.subheader("Сотрудники")
@@ -293,7 +294,7 @@ def show_admin_page():
                     st.number_input(label="Награда за выполнение",
                                     key="task_award_widget",
                                     min_value=0, value=None, step=1,
-                                    placeholder="Введте колличество баллов")
+                                    placeholder="Введите колличество баллов")
                     st.number_input(label="Время на выполнение",
                                     key="task_planned_time_widget",
                                     min_value=0, value=None, step=1,
@@ -336,7 +337,7 @@ def show_admin_page():
                                     label="Новая награда за выполнение",
                                     key="edit_challenge_reward_widget",
                                     min_value=0, step=1,
-                                    placeholder="Введте колличество баллов")
+                                    placeholder="Введите колличество баллов")
                     st.number_input(value=task_planned_time_to_edit,
                                     label="Новое время на выполнение",
                                     key="edit_challenge_planned_time_widget",
@@ -385,7 +386,7 @@ def show_admin_page():
                     st.number_input(label="Стоимость награды",
                                     key="reward_price_widget",
                                     min_value=0, value=None, step=1,
-                                    placeholder="Введте колличество баллов")
+                                    placeholder="Введите колличество баллов")
                 add_reward_btn = st.form_submit_button(label="Добавить награду в базу", on_click=add_new_reward,
                                                      use_container_width=True, type="primary")
                 if add_reward_btn:
@@ -413,16 +414,16 @@ def show_admin_page():
                         reward_description_to_edit = selcted_reward["reward_description"].values[0]
                         reward_price_to_edit = int(selcted_reward["reward_price"].values[0])
                     st.text_area(value=reward_description_to_edit,
-                                 label="Новая нраграда",
+                                 label="Новая награда",
                                  key="edit_reward_description_widget",
-                                 placeholder="Новое опасание нраграды",
+                                 placeholder="Новое опасание награды",
                                  max_chars=200)
                 with col2:
                     st.number_input(value=reward_price_to_edit, 
                                     label="Новая стоимость награды",
                                     key="edit_reward_price_widget",
                                     min_value=0, step=1,
-                                    placeholder="Введте колличество баллов")
+                                    placeholder="Введите колличество баллов")
 
                 update_reward_btn = st.form_submit_button(label="Применить изменения", on_click=update_reward,
                                                              args=(reward_id,), use_container_width=True, type="primary")
@@ -446,3 +447,25 @@ def show_admin_page():
                          },
                          hide_index=True
                          )
+    elif selected == "Запросы":
+        user_rewards = get_user_rewards(user_id="all")
+        to_rewards_df = {
+            "name": [],
+            "description": [],
+            "request_date": [],
+            "status": []
+            }
+        for reward in user_rewards:
+            current_reward = reward.to_dict()
+            request_date = datetime.strptime(current_reward["user_reward_request_date"], "%Y-%m-%dT%H:%M:%S.%fZ")
+            to_rewards_df["name"].append(current_reward["user_name"])
+            to_rewards_df["description"].append(current_reward["reward_description"])
+            to_rewards_df["request_date"].append(request_date)
+            to_rewards_df["status"].append(current_reward["user_reward_status"])
+        st.dataframe(data=pd.DataFrame(to_rewards_df), use_container_width=True, hide_index=True,
+                        column_order=["name","description","request_date", "status"], column_config={
+                            "name": st.column_config.Column(label="Имя сотруника"),
+                            "description": st.column_config.Column(label="Награда"),
+                            "request_date": st.column_config.DatetimeColumn(label="Дата запроса"),
+                            "status": st.column_config.Column(label="Статус запроса")
+                            })
