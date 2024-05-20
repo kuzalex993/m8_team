@@ -53,17 +53,6 @@ if authentication_status is True:
     authenticator.logout(button_name='Выйти',
                          location='sidebar')
     
-    # if st.button("Отправить"):
-    #     TOKEN = "6613414921:AAHsFYplKUnt_-imtgMVsNQb29ur-SQNPpk"
-    #     # url = f"https://api.telegram.org/bot{TOKEN}/getUpdates"
-    #     # print(requests.get(url).json())
-    #     chat_id = "113170464"
-    #     message = "hello from your telegram bot"
-    #     url = f"https://api.telegram.org/bot{TOKEN}/sendMessage?chat_id={chat_id}&text={message}"
-    #     print(requests.get(url).json()) # this sends the message
-
-
-
 class User:
     def __init__(self, name: str, email: str, position: str, role: str, free_bonuses: int = 0, reserved_bonuses: int = 0):
         self.name = name
