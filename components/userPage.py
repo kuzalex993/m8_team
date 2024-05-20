@@ -70,7 +70,7 @@ def request_reward(reward_id: str, reward_description: str, reward_price: int):
         "reward_id": reward_id,
         "user_id": st.session_state.username,
         "user_name": st.session_state.user_data["user_name"],
-        "user_reward_desicion_date": None,
+        "user_reward_decision_date": None,
         "user_reward_request_date": datetime.now().strftime("%Y-%m-%dT%H:%M:%S.%fZ"),
         "user_reward_status": "new"
     }

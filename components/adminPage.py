@@ -7,6 +7,7 @@ from datetime import datetime, timedelta, date
 import logging
 
 from components.firebase import (put_into_user_bonus_collection, put_into_user_challenge_collection,
+                                 get_document, get_value,
                                  get_users, update_value, add_new_document,
                                  get_collection, update_document, get_user_rewards)
 
@@ -112,7 +113,7 @@ def update_challenge(challenge_id):
         "challenge_reward": st.session_state.edit_challenge_reward_widget,
         "challenge_planned_time_completion": st.session_state.edit_challenge_planned_time_widget,
         "challenge_active": True,
-        "challenge_date_update": datetime.utcnow().strftime("%Y-%m-%dT%H:%M:%S.%fZ")
+        "challenge_date_update": datetime.now().strftime("%Y-%m-%dT%H:%M:%S.%fZ")
     }
     if update_document(collection_name="challenges",
                        document_id=challenge_id,
@@ -128,7 +129,7 @@ def get_user_bonus(selected_user_id: str) -> int:
     return user_account
 
 
-def get_users_map() -> dict():
+def get_users_map() -> dict:
     cred = st.session_state.users_config
     fire_users = cred["credentials"]["usernames"]
     for key, value in fire_users.items():
@@ -155,6 +156,31 @@ def get_user_challenge_df():
     user_challenge = get_collection(collection_name="user_challenge")
     df = pd.DataFrame(user_challenge)
     return df
+
+def confirm_user_request(user_reward_id: str, user_id: str, reward_id: str):
+    reward_price = get_value(collection_name="rewards",document_name=reward_id, field_name="reward_price")
+    user_reserved_bonus = get_value(collection_name="users",document_name=user_id, field_name="user_reserved_bonuses")
+    if reward_price > user_reserved_bonus:
+        print("Error! Lack of reserved bonuses")
+    else:
+        updated_user_data = {
+            "user_reserved_bonuses": user_reserved_bonus - reward_price
+        }
+        update_document(collection_name="users", document_id=user_id, document_data=updated_user_data)
+        updated_user_reward_data = {
+            "user_reward_status": "completed",
+            "user_reward_deсision_date": datetime.now().strftime("%Y-%m-%dT%H:%M:%S.%fZ")
+        }
+        update_document(collection_name="user_reward", document_id=user_reward_id, document_data=updated_user_reward_data)
+        new_user_bonus_record = {
+            "user_id": user_id,
+            "transaction_type": "debiting bonus",
+            "event_type": "user_reward",
+            "event_id": user_reward_id,
+            "date": datetime.now().strftime("%Y-%m-%dT%H:%M:%S.%fZ"),
+            "bonus_value": reward_price
+        }
+        add_new_document(collection_name="user_bonus", document_data=new_user_bonus_record)
 
 
 def show_admin_page():
@@ -449,23 +475,58 @@ def show_admin_page():
                          )
     elif selected == "Запросы":
         user_rewards = get_user_rewards(user_id="all")
-        to_rewards_df = {
+        completed_rewards_to_df = {
             "name": [],
             "description": [],
             "request_date": [],
-            "status": []
+            "status": [],
+            "decision_date": []
             }
-        for reward in user_rewards:
-            current_reward = reward.to_dict()
-            request_date = datetime.strptime(current_reward["user_reward_request_date"], "%Y-%m-%dT%H:%M:%S.%fZ")
-            to_rewards_df["name"].append(current_reward["user_name"])
-            to_rewards_df["description"].append(current_reward["reward_description"])
-            to_rewards_df["request_date"].append(request_date)
-            to_rewards_df["status"].append(current_reward["user_reward_status"])
-        st.dataframe(data=pd.DataFrame(to_rewards_df), use_container_width=True, hide_index=True,
-                        column_order=["name","description","request_date", "status"], column_config={
-                            "name": st.column_config.Column(label="Имя сотруника"),
-                            "description": st.column_config.Column(label="Награда"),
-                            "request_date": st.column_config.DatetimeColumn(label="Дата запроса"),
-                            "status": st.column_config.Column(label="Статус запроса")
-                            })
+        show_info_flag = True
+        info_messages = ["Упс! Кажется, пока тут пусто...", "И тут тоже пусто..."]
+        for user_reward in user_rewards:
+            current_reward = user_reward.to_dict()
+            if current_reward["user_reward_status"] == "new":
+                show_info_flag = False        
+                with st.form(f"request_form_{user_reward.id}"):
+                    request_col1, request_col2, request_col3, request_col4 = st.columns([2,1,1,1])
+                    requester_id = current_reward["user_id"]
+                    requester_name = current_reward["user_name"]
+                    reward_id = current_reward["reward_id"]
+                    date_object = datetime.fromisoformat(current_reward["user_reward_request_date"].replace("Z", "+00:00"))
+                    formatted_date = date_object.strftime("%d/%m/%Y")
+                    with request_col1:
+                        st.markdown( body= f"{current_reward['reward_description']}")
+                    with request_col2:    
+                        st.caption(body=f"{requester_name}")
+                    with request_col3:
+                        st.caption(body=f"{formatted_date}")  
+                    with request_col4:
+                        st.form_submit_button(label="Подтвердить", use_container_width=True, type="primary",
+                                            on_click=confirm_user_request,
+                                            args=(user_reward.id, requester_id, reward_id,))
+            else:
+                completed_rewards_to_df["description"].append(current_reward["reward_description"])
+                completed_rewards_to_df["name"].append(current_reward["user_name"])
+                completed_rewards_to_df["request_date"].append(current_reward["user_reward_request_date"])
+                completed_rewards_to_df["status"].append(current_reward["user_reward_status"])
+                completed_rewards_to_df["decision_date"].append(current_reward["user_reward_decision_date"])
+        if show_info_flag:
+            st.info(info_messages[0])
+            info_messages.pop(0)
+        with st.expander("Остальные запросы"):
+            if len(completed_rewards_to_df["description"]) == 0:
+                st.info(info_messages[0])
+            else:
+                completed_rewards_df = pd.DataFrame(completed_rewards_to_df)
+                st.dataframe(completed_rewards_df, use_container_width=False,
+                            column_order=("description", "name", "request_date","status", "decision_date"),
+                            column_config={
+                                "description": "Описание награды",
+                                "name": "Имя",
+                                "request_date": st.column_config.DateColumn(label="Дата запроса", format="DD.MM.YYYY"),
+                                "status": "Статус запроса",
+                                "decision_date": st.column_config.DateColumn(label="Дата принятия решения", format="DD.MM.YYYY")
+                                },
+                                hide_index=True
+                            )    

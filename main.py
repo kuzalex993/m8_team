@@ -4,6 +4,7 @@ import streamlit_authenticator as stauth
 from components.firebase import get_credentials, register_user, create_user
 from components.adminPage import show_admin_page
 from components.userPage import show_user_page
+import requests
 
 import firebase_admin
 from firebase_admin import credentials
@@ -51,6 +52,15 @@ if authentication_status is True:
         show_user_page()
     authenticator.logout(button_name='Выйти',
                          location='sidebar')
+    
+    # if st.button("Отправить"):
+    #     TOKEN = "6613414921:AAHsFYplKUnt_-imtgMVsNQb29ur-SQNPpk"
+    #     # url = f"https://api.telegram.org/bot{TOKEN}/getUpdates"
+    #     # print(requests.get(url).json())
+    #     chat_id = "113170464"
+    #     message = "hello from your telegram bot"
+    #     url = f"https://api.telegram.org/bot{TOKEN}/sendMessage?chat_id={chat_id}&text={message}"
+    #     print(requests.get(url).json()) # this sends the message
 
 
 
