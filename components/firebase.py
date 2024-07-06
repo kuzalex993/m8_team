@@ -104,19 +104,22 @@ def add_new_document(collection_name: str, document_data: dict) -> bool:
     try:
         collection_ref = db.collection(collection_name)
         update_time, document_ref = collection_ref.add(document_data=document_data)
-        print(f"{update_time} Added new document with id {document_ref.id}")
-        return True
+        print(f"{update_time} Added new document with id '{document_ref.id}' to collection '{collection_name}'")
+        return document_ref.id
     except Exception as e:
-        print(e)
-        return False
+        print(f"Error: Couldn't add document to collection '{collection_name}'")
+        print(f"--- Error message: {e}")
+        return None
 
-def update_document(collection_name: str, document_id: str, document_data: dict()) -> bool:
+def update_document(collection_name: str, document_id: str, document_data: dict) -> bool:
     try:
         doc_ref = db.collection(collection_name).document(document_id)
         doc_ref.update(document_data)
+        print(f"Updated document '{document_id}' in collection '{collection_name}'")
         return True
     except Exception as e:
-        print(e)
+        print(f"Error: Couldn't update  document '{document_id}' in collection '{collection_name}'")
+        print(f"--- Error message: {e}")
         return False
     
 def put_into_user_bonus_collection(user_id: int, transaction_type: str, bonus_value: int, event_type: str, event_id: int):

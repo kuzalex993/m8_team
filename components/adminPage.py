@@ -169,7 +169,7 @@ def confirm_user_request(user_reward_id: str, user_id: str, reward_id: str):
         update_document(collection_name="users", document_id=user_id, document_data=updated_user_data)
         updated_user_reward_data = {
             "user_reward_status": "completed",
-            "user_reward_deсision_date": datetime.now().strftime("%Y-%m-%dT%H:%M:%S.%fZ")
+            "user_reward_decision_date": datetime.now().strftime("%Y-%m-%dT%H:%M:%S.%fZ")
         }
         update_document(collection_name="user_reward", document_id=user_reward_id, document_data=updated_user_reward_data)
         new_user_bonus_record = {
@@ -483,7 +483,7 @@ def show_admin_page():
             "decision_date": []
             }
         show_info_flag = True
-        info_messages = ["Упс! Кажется, пока тут пусто...", "И тут тоже пусто..."]
+        info_messages = ["Ого! Кажется, пока тут пусто...", "И тут тоже пусто..."]
         for user_reward in user_rewards:
             current_reward = user_reward.to_dict()
             if current_reward["user_reward_status"] == "new":
@@ -518,8 +518,9 @@ def show_admin_page():
             if len(completed_rewards_to_df["description"]) == 0:
                 st.info(info_messages[0])
             else:
-                completed_rewards_df = pd.DataFrame(completed_rewards_to_df)
-                st.dataframe(completed_rewards_df, use_container_width=False,
+                completed_rewards_df = pd.DataFrame(completed_rewards_to_df).sort_values(by="request_date",
+                                                                                         ascending=False)
+                st.dataframe(completed_rewards_df, use_container_width=True,
                             column_order=("description", "name", "request_date","status", "decision_date"),
                             column_config={
                                 "description": "Описание награды",

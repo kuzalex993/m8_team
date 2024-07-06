@@ -65,6 +65,8 @@ def get_user_challenge_df():
 
 
 def request_reward(reward_id: str, reward_description: str, reward_price: int):
+    user_reserved_bonus = get_value(collection_name="users",document_name=st.session_state.username, field_name="user_reserved_bonuses")
+    user_free_bonuses = get_value(collection_name="users",document_name=st.session_state.username, field_name="user_free_bonuses")
     new_user_reward_record = {
         "reward_description": reward_description,
         "reward_id": reward_id,
@@ -74,23 +76,25 @@ def request_reward(reward_id: str, reward_description: str, reward_price: int):
         "user_reward_request_date": datetime.now().strftime("%Y-%m-%dT%H:%M:%S.%fZ"),
         "user_reward_status": "new"
     }
-    add_new_document(collection_name="user_reward", document_data=new_user_reward_record)
+    user_reward_id = add_new_document(collection_name="user_reward", document_data=new_user_reward_record)
 
     updated_user_data = {
-            "user_free_bonuses": st.session_state.user_data["user_free_bonuses"] - reward_price,
-            "user_reserved_bonuses": st.session_state.user_data["user_reserved_bonuses"] + reward_price
+            "user_free_bonuses": user_free_bonuses - reward_price,
+            "user_reserved_bonuses": user_reserved_bonus + reward_price
         }
     update_document(collection_name="users", document_id=st.session_state.username, document_data=updated_user_data)
-    
-    new_user_bonus_record = {
-            "bonus_value": reward_price,
-            "date": datetime.now().strftime("%Y-%m-%dT%H:%M:%S.%fZ"),
-            "event_id": reward_id,
-            "event_type": "user_reward",
-            "transaction_type": "bonus reserve",
-            "user_id": st.session_state.username
-        }
-    add_new_document(collection_name="user_bonus", document_data=new_user_bonus_record)
+    if user_reward_id is not None:
+        new_user_bonus_record = {
+                "bonus_value": reward_price,
+                "date": datetime.now().strftime("%Y-%m-%dT%H:%M:%S.%fZ"),
+                "event_id": user_reward_id,
+                "event_type": "user_reward",
+                "transaction_type": "reserve bonus",
+                "user_id": st.session_state.username
+            }
+        new_user_bonus_record_id = add_new_document(collection_name="user_bonus", document_data=new_user_bonus_record)
+    else:
+        print(f"Returned user_reward_id is 'None'. There was an issue to create new record in user_reward collection")
     refresh_user_data()
 
 def add_new_user_challenge(challenge_id: int, challenge_duration: int):
@@ -120,7 +124,7 @@ def close_user_challenge(id):
         }
         update_value(collection="users",document=st.session_state.username,
                         field="user_free_bonuses", value=new_user_bonus)
-        add_new_document(collection_name="user_bonus", document_data=new_user_bonus_record)
+        new_user_bonus_record_id = add_new_document(collection_name="user_bonus", document_data=new_user_bonus_record)
         new_challenges(message=f"Задание закрыто вовремя. Начислено {challenge_reward} бонусов")
 
         updated_user_challenge_data = {
@@ -165,6 +169,7 @@ def show_user_page():
                 st.header(st.session_state.user_data["user_name"], anchor=None,  help=None, divider=False)
                 st.markdown(f"**Позиция:** {st.session_state.user_data['user_position']}", help=None)
                 st.markdown(f"**Доступные бонусы:** {st.session_state.user_data['user_free_bonuses']}", help=None)
+                st.markdown(f"**Бонусы в резерве:** {st.session_state.user_data['user_reserved_bonuses']}", help=None)
             with col2:
                 chart_options = draw_bonus_chart(_free_bonus=st.session_state.user_data["user_free_bonuses"], 
                                                  _reserved_bonus=st.session_state.user_data["user_reserved_bonuses"])
@@ -204,7 +209,8 @@ def show_user_page():
                 to_rewards_df["description"].append(current_reward["reward_description"])
                 to_rewards_df["request_date"].append(request_date)
                 to_rewards_df["status"].append(current_reward["user_reward_status"])
-            st.dataframe(data=pd.DataFrame(to_rewards_df), use_container_width=True, hide_index=True,
+                rewards_df = pd.DataFrame(to_rewards_df).sort_values(by="request_date", ascending=False)
+            st.dataframe(data=rewards_df, use_container_width=True, hide_index=True,
                          column_order=["description","request_date", "status"], column_config={
                              "description": st.column_config.Column(label="Награда"),
                              "request_date": st.column_config.DatetimeColumn(label="Дата запроса"),
@@ -260,7 +266,9 @@ def show_user_page():
                         st.date_input(label="Окончание", value=end_date, format="DD/MM/YYYY", 
                                       key=f"panned_finish_{challenge.id}", disabled=True)
 
-                    st.form_submit_button(label="Завершить", use_container_width=True, type="secondary")
+                    st.form_submit_button(label="Завершить", use_container_width=True,
+                                              type="secondary", on_click=close_user_challenge,
+                                              args=(challenge.id,))
             with st.container():
                 user_challenges_ongoing = get_user_challenges(user_id=st.session_state.user_id,
                                                             challenge_status="ongoing")
