@@ -131,7 +131,7 @@ def put_into_user_bonus_collection(user_id: int, transaction_type: str, bonus_va
         "event_id":event_id,
         "date": datetime.utcnow().strftime("%Y-%m-%dT%H:%M:%S.%fZ")
     }
-    if add_new_document("user_bonus", new_record):
+    if add_new_document("user_bonus", new_record) is not None:
         return True
     else:
         False
@@ -151,7 +151,7 @@ def put_into_user_challenge_collection(user_id: int, user_name: str, challenge_i
         "challenge_success": "uknonwn",
         "challenge_creation_date": challenge_creation_date
     }
-    if add_new_document("user_challenge", new_record):
+    if add_new_document("user_challenge", new_record) is not None:
         return True
     else:
         False
