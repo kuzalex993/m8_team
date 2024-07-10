@@ -1,7 +1,10 @@
 import pandas as pd
+import os
 import streamlit as st
 from streamlit_option_menu import option_menu
 from datetime import datetime, timedelta, date
+from dotenv import load_dotenv
+load_dotenv()
 
 
 import logging
@@ -10,6 +13,8 @@ from components.firebase import (put_into_user_bonus_collection, put_into_user_c
                                  get_document, get_value,
                                  get_users, update_value, add_new_document,
                                  get_collection, update_document, get_user_rewards)
+from components.notifications import send_message
+
 
 from firebase_admin import firestore
 import firebase_admin
@@ -35,6 +40,10 @@ def new_user_selected():
         selected_user_id = st.session_state.users_data_map[st.session_state.selected_user_name]
         st.session_state.current_user_balance = get_user_bonus(selected_user_id)
 
+def notify_user(message: str, user_name: str):
+    user_chat_id = get_value(collection_name="users",document_name=user_name,field_name="chat_id")
+    send_message(chat_id=user_chat_id, text=message)
+
 def update_user_bonus(user_name):
     additional_bonus = st.session_state.additional_bonus_widget
     transaction_type = transaction_type_map[st.session_state.operation_widget]
@@ -45,6 +54,10 @@ def update_user_bonus(user_name):
                                     event_type="admin",event_id="None"):
         if update_value(collection="users", document=user_name,
                         field="user_free_bonuses", value=st.session_state.new_user_balance):
+            if additional_bonus > 0:
+                notify_user(message=f"Администратор добавил вам {additional_bonus} бонусов", user_name=user_name)
+            elif additional_bonus < 0:
+                notify_user(message=f"Администратор уменьшил ваш баланс на {additional_bonus} бонусов", user_name=user_name)
             st.session_state.transaction_status = True
         st.session_state.additional_bonus_widget = 0
     st.session_state.current_user_balance = get_user_bonus(user_name)
@@ -88,6 +101,8 @@ def add_new_user_challenge(challenge_id: int, challenge_duration: int):
                                                     challenge_creation_date=datetime.now().strftime("%Y-%m-%dT%H:%M:%S.%fZ") 
                                                     )
         if status:
+            notify_user(message=f"Вам назначено новое задание:\nОписание: {st.session_state.challenge_to_assign_description_widget}\nДата начала: {st.session_state.challenge_to_assign_start_date_widget}\nВремя на выполнение: {challenge_duration} дней",
+                        user_name=selected_user_id)
             st.session_state.transaction_status = True
             # retrieve updated data from firebase
             st.session_state.user_challenge_df = get_user_challenge_df()
@@ -159,6 +174,7 @@ def get_user_challenge_df():
 
 def confirm_user_request(user_reward_id: str, user_id: str, reward_id: str):
     reward_price = get_value(collection_name="rewards",document_name=reward_id, field_name="reward_price")
+    reward_description = get_value(collection_name="rewards",document_name=reward_id, field_name="reward_description")
     user_reserved_bonus = get_value(collection_name="users",document_name=user_id, field_name="user_reserved_bonuses")
     if reward_price > user_reserved_bonus:
         print("Error! Lack of reserved bonuses")
@@ -181,6 +197,8 @@ def confirm_user_request(user_reward_id: str, user_id: str, reward_id: str):
             "bonus_value": reward_price
         }
         add_new_document(collection_name="user_bonus", document_data=new_user_bonus_record)
+        notify_user(message=f"Ура! Админ подтвердил награду: {reward_description}",
+                    user_name=user_id)
 
 
 def show_admin_page():
@@ -204,6 +222,8 @@ def show_admin_page():
         st.session_state.transaction_status = False
     if "users_data_map" not in st.session_state:
         st.session_state.users_data_map = get_users_map()
+    if "bot_endpoint" not in st.session_state:
+        st.session_state["bot_endpoint"] = os.getenv("T_BOT_ENDPOINT")
 
     # to check if wee need these variables in session_state
     if "new_user_balance" not in st.session_state:
@@ -221,7 +241,7 @@ def show_admin_page():
                                      on_change=new_user_selected, options=users_list)
         if selected_user_name:
             selected_user_id = st.session_state.users_data_map[selected_user_name]
-            tab1, tab2 = st.tabs(["📈 Управление бонусами пользователей", "🗃 Управление задачами пользователей"])
+            tab1, tab2 = st.tabs(["📈 Управление бонусами пользователей", "🗃 Управление заданиями пользователей"])
             with tab1:
                 with st.container():
                     col1, col2 = st.columns(2)
@@ -273,7 +293,7 @@ def show_admin_page():
                     st.number_input(label="Бонусы", value=challenge_reward, disabled=True)
                     
                 if selected_challenge is not None:
-                    assign_challenge_btn = st.button(label="Назначить задачу", use_container_width=True,
+                    assign_challenge_btn = st.button(label="Назначить задание", use_container_width=True,
                                                      type="primary", on_click=add_new_user_challenge, args=(challenge_id, challenge_duration))
                     if assign_challenge_btn:
                         if st.session_state.transaction_status:

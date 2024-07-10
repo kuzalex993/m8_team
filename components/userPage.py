@@ -1,9 +1,13 @@
 import streamlit as st
+from dotenv import load_dotenv
+import os
 from streamlit_option_menu import option_menu
 import matplotlib.pyplot as plt
 from streamlit_echarts import st_echarts
 from datetime import datetime, timedelta
 import pandas as pd
+
+load_dotenv()
 
 from components.firebase import (get_document, get_user_challenges, get_collection, get_value,
                                  put_into_user_bonus_collection, 
@@ -11,10 +15,12 @@ from components.firebase import (get_document, get_user_challenges, get_collecti
                                  get_users, update_value, add_new_document,
                                  update_document, get_user_rewards)
 
+from components.notifications import send_message
+
+
 def draw_bonus_chart(_free_bonus: int, _reserved_bonus: int) -> dict:
     options = {
         "tooltip": {"trigger": "item"},
-        #"legend": {"top": "5%", "left": "center"},
         "series": [
             {
                 "name": "Мои бонусы",
@@ -42,6 +48,10 @@ def update_user_challenges_status(id_list: list)->bool:
         update_value(collection="user_challenge",document=id, field="challenge_status", value="ongoing")
 def refresh_user_data():
     st.session_state.user_data = get_document(collection_name="users",document_name=st.session_state.user_id)
+
+def notify_admin(message: str):
+    admin_chat_id = get_value(collection_name="users",document_name="admin",field_name="chat_id")
+    send_message(chat_id=admin_chat_id, text=message)
 
 
 def get_challenges_df():
@@ -95,6 +105,7 @@ def request_reward(reward_id: str, reward_description: str, reward_price: int):
         new_user_bonus_record_id = add_new_document(collection_name="user_bonus", document_data=new_user_bonus_record)
     else:
         print(f"Returned user_reward_id is 'None'. There was an issue to create new record in user_reward collection")
+    notify_admin(message=f"Запрошена новая награда:\nПользователь: {st.session_state.user_data['user_name']} \nНаграда: {reward_description}")
     refresh_user_data()
 
 def add_new_user_challenge(challenge_id: int, challenge_duration: int):
@@ -156,10 +167,12 @@ def show_user_page():
     if "reserved_bonus" not in st.session_state:
         st.session_state.reserved_bonus = None
     if "user_data" not in st.session_state:
-        st.session_state.user_data = get_document(collection_name="users",document_name=st.session_state.user_id)
+        st.session_state.user_data = get_document(collection_name="users", document_name=st.session_state.user_id)
+    if "bot_endpoint" not in st.session_state:
+        st.session_state["bot_endpoint"] = os.getenv("T_BOT_ENDPOINT")
     
     with st.sidebar:
-        selected = option_menu("M8Agency", ["Мои бонусы", "Мои задания"],
+        selected = option_menu("M8Agency", ["Мои бонусы", "Мои задания", "Мои настройки"],
                                icons=["award", "list-task",], menu_icon="cast", default_index=0)
 
     if selected=="Мои бонусы":
@@ -296,3 +309,7 @@ def show_user_page():
                                               args=(challenge.id,))
             # we update new challenges status after all challenges are displayed,
             update_user_challenges_status(id_list=new_challenges_ids)
+    elif selected=="Мои настройки":
+        st.markdown(body="Для того, чтобы подключить уведомления, перейдите по ссылке в Telegram бот.")
+        st.markdown(f"[Перейти в Телеграм web](https://web.telegram.org/k/#@EightAgencyAssist_bot)")
+        st.markdown(f"[Перейти в Телеграм app]({st.session_state['bot_endpoint']})")

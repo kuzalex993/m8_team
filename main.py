@@ -4,10 +4,10 @@ import streamlit_authenticator as stauth
 from components.firebase import get_credentials, register_user, create_user
 from components.adminPage import show_admin_page
 from components.userPage import show_user_page
-import requests
+from dotenv import load_dotenv
+import os
+load_dotenv()
 
-import firebase_admin
-from firebase_admin import credentials
 if "users_config" not in st.session_state or  st.session_state.users_config is None:
     st.session_state.users_config = get_credentials()
 authenticator = stauth.Authenticate(
@@ -17,6 +17,8 @@ authenticator = stauth.Authenticate(
     st.session_state.users_config['cookie']['expiry_days'],
     st.session_state.users_config['preauthorized']
 )
+if "bot_endpoint" not in st.session_state:
+    st.session_state["bot_endpoint"] = os.getenv("T_BOT_ENDPOINT")
 st.session_state.user_name, authentication_status, st.session_state.user_id = authenticator.login(location='main',
                                                                             fields={'Form name': 'Войти в аккаунт',
                                                                                     'Username': 'Имя пользователя',
