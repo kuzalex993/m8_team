@@ -160,12 +160,12 @@ def new_challenges(message: str):
 
 
 def show_user_page():
+    if "user_data" not in st.session_state:
+        st.session_state["user_data"] = get_document(collection_name="users", document_name=st.session_state.user_id)
     if "free_bonus" not in st.session_state:
         st.session_state.user_data['user_free_bonuses'] = None
     if "reserved_bonus" not in st.session_state:
         st.session_state.user_data['user_reserved_bonuses'] = None
-    if "user_data" not in st.session_state:
-        st.session_state["user_data"] = get_document(collection_name="users", document_name=st.session_state.user_id)
     if "bot_endpoint" not in st.session_state:
         st.session_state["bot_endpoint"] = os.getenv("T_BOT_ENDPOINT")
     
