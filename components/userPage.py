@@ -56,10 +56,8 @@ def notify_admin(message: str):
 
 def get_challenges_df():
     challenges = get_collection(collection_name="challenges")
-    # Convert challenge_date_update to string format
     for challenge in challenges:
         challenge['challenge_date_update'] = str(challenge['challenge_date_update'])
-    # Create DataFrame
     df = pd.DataFrame(challenges)
     return df
 
@@ -163,11 +161,11 @@ def new_challenges(message: str):
 
 def show_user_page():
     if "free_bonus" not in st.session_state:
-        st.session_state.free_bonus = None
+        st.session_state.user_data['user_free_bonuses'] = None
     if "reserved_bonus" not in st.session_state:
-        st.session_state.reserved_bonus = None
+        st.session_state.user_data['user_reserved_bonuses'] = None
     if "user_data" not in st.session_state:
-        st.session_state.user_data = get_document(collection_name="users", document_name=st.session_state.user_id)
+        st.session_state["user_data"] = get_document(collection_name="users", document_name=st.session_state.user_id)
     if "bot_endpoint" not in st.session_state:
         st.session_state["bot_endpoint"] = os.getenv("T_BOT_ENDPOINT")
     
@@ -176,6 +174,8 @@ def show_user_page():
                                icons=["award", "list-task",], menu_icon="cast", default_index=0)
 
     if selected=="Мои бонусы":
+        st.session_state["user_data"] = get_document(collection_name="users", 
+                                                     document_name=st.session_state["user_id"])
         with st.container(height=300, border=True):
             col1, col2 = st.columns(2)
             with col1:
