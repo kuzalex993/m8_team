@@ -23,3 +23,5 @@ def send_message(chat_id, text: str):
         except requests.exceptions.RequestException as e:
             print(f"An error occurred: {e}")
             return None
+        
+
