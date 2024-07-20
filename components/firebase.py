@@ -7,7 +7,7 @@ from datetime import datetime, date, timedelta
 try:
     app = firebase_admin.get_app("firebase_connector")
 except ValueError:
-    cred = credentials.Certificate('./m8-agency-2e7b37294714.json')
+    cred = credentials.Certificate('./firebase_config.json')
     app = firebase_admin.initialize_app(cred, name="firebase_connector")
 
 db = firestore.client(app)
