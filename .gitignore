@@ -26,6 +26,8 @@ configuration/
 .installed.cfg
 *.egg
 MANIFEST
+Dockerfile
+firebase_config.json
 
 # PyInstaller
 #  Usually these files are written by a python script from a template
