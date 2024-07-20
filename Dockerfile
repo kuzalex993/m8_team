@@ -1,11 +1,18 @@
-FROM python:3.10-slim
-EXPOSE 8080
-WORKDIR /app
-RUN apt-get update && apt-get install -y
-RUN pip install --upgrade pip
-COPY requirements.txt requirements.txt
-RUN pip install -r requirements.txt
-COPY . /app
+FROM python:3.9-slim
 
-# Запускаем приложение
-ENTRYPOINT ["streamlit", "run", "main.py", "--server.port=8080", "--server.address=0.0.0.0"]
+WORKDIR /app
+
+RUN apt-get update && apt-get install -y
+
+COPY . .
+
+RUN pip install --upgrade pip
+
+RUN pip install -r requirements.txt
+
+ENV T_BOT_ENDPOINT=
+ENV BOT_TOKEN=
+
+EXPOSE 8501
+
+CMD ["streamlit", "run", "main.py"]
