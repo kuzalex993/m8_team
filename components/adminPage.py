@@ -16,16 +16,6 @@ from components.firebase import (put_into_user_bonus_collection, put_into_user_c
 from components.notifications import send_message
 
 
-from firebase_admin import firestore
-import firebase_admin
-from firebase_admin import credentials
-try:
-    app = firebase_admin.get_app("firebase_connector")
-except ValueError:
-    cred = credentials.Certificate('./configuration/m8-agency-2e7b37294714.json')
-    app = firebase_admin.initialize_app(cred, name="firebase_connector")
-
-db = firestore.client(app)
 
 transaction_type_map = {
     "Добавить": "charge bonus",
