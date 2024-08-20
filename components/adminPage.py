@@ -23,12 +23,12 @@ transaction_type_map = {
     "Зарезирвировать": "reserve bonus"
 }
 
-user_map = dict()
+
 
 def new_user_selected():
     if st.session_state.selected_user_name:
-        selected_user_id = st.session_state.users_data_map[st.session_state.selected_user_name]
-        st.session_state.current_user_balance = get_user_bonus(selected_user_id)
+        selected_user_id = st.session_state["users_data_map"][st.session_state["selected_user_name"]]
+        st.session_state["current_user_balance"] = get_user_bonus(selected_user_id)
 
 def notify_user(message: str, user_name: str):
     user_chat_id = get_value(collection_name="users",document_name=user_name,field_name="chat_id")
@@ -135,11 +135,11 @@ def get_user_bonus(selected_user_id: str) -> int:
 
 
 def get_users_map() -> dict:
-    cred = st.session_state.users_config
-    fire_users = cred["credentials"]["usernames"]
-    for key, value in fire_users.items():
-        if key != "admin":
-            user_map[value["name"]] = key
+    user_map = dict()
+    users = get_users()
+    for key, value in users.items():
+        if key != "admin" and key != "alekseik":
+            user_map[value["user_name"]] = key
     return user_map
 
 
@@ -226,11 +226,12 @@ def show_admin_page():
                                icons=['house', "list-task", "award"], menu_icon="cast", default_index=0)
     if selected == "Сотрудники":
         st.subheader("Сотрудники")
-        users_list = list(st.session_state.users_data_map.keys())
+        st.session_state["users_data_map"] = get_users_map()
+        users_list = list(st.session_state["users_data_map"].keys())
         selected_user_name = st.selectbox(label="Cотрудник", index=None, placeholder='Выберите сотрудника', key="selected_user_name",
                                      on_change=new_user_selected, options=users_list)
         if selected_user_name:
-            selected_user_id = st.session_state.users_data_map[selected_user_name]
+            selected_user_id = st.session_state["users_data_map"][selected_user_name]
             tab1, tab2 = st.tabs(["📈 Управление бонусами пользователей", "🗃 Управление заданиями пользователей"])
             with tab1:
                 with st.container():
