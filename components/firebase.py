@@ -41,7 +41,8 @@ def create_user(email: str, user: str, name: str) -> bool:
         "user_name": name,
         "user_position": "сотрудник",
         "user_reserved_bonuses": 0,
-        "user_role": "user"
+        "user_role": "user",
+        "chat_id": None
     }
     try:
         collection_ref = db.collection("users")
