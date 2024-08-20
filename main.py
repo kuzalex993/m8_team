@@ -1,5 +1,5 @@
 import streamlit as st
-st.set_page_config(page_title="My performance", layout="wide", initial_sidebar_state="auto")
+st.set_page_config(page_title="M8 team", layout="wide", initial_sidebar_state="auto")
 import streamlit_authenticator as stauth
 from components.firebase import get_credentials, register_user, create_user
 from components.adminPage import show_admin_page
