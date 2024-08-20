@@ -331,7 +331,7 @@ def show_admin_page():
                     st.number_input(label="Награда за выполнение",
                                     key="task_award_widget",
                                     min_value=0, value=None, step=1,
-                                    placeholder="Введите колличество баллов")
+                                    placeholder="Введите количество баллов")
                     st.number_input(label="Время на выполнение",
                                     key="task_planned_time_widget",
                                     min_value=0, value=None, step=1,
@@ -374,7 +374,7 @@ def show_admin_page():
                                     label="Новая награда за выполнение",
                                     key="edit_challenge_reward_widget",
                                     min_value=0, step=1,
-                                    placeholder="Введите колличество баллов")
+                                    placeholder="Введите количество баллов")
                     st.number_input(value=task_planned_time_to_edit,
                                     label="Новое время на выполнение",
                                     key="edit_challenge_planned_time_widget",
@@ -423,7 +423,7 @@ def show_admin_page():
                     st.number_input(label="Стоимость награды",
                                     key="reward_price_widget",
                                     min_value=0, value=None, step=1,
-                                    placeholder="Введите колличество баллов")
+                                    placeholder="Введите количество баллов")
                 add_reward_btn = st.form_submit_button(label="Добавить награду в базу", on_click=add_new_reward,
                                                      use_container_width=True, type="primary")
                 if add_reward_btn:
@@ -460,7 +460,7 @@ def show_admin_page():
                                     label="Новая стоимость награды",
                                     key="edit_reward_price_widget",
                                     min_value=0, step=1,
-                                    placeholder="Введите колличество баллов")
+                                    placeholder="Введите количество баллов")
 
                 update_reward_btn = st.form_submit_button(label="Применить изменения", on_click=update_reward,
                                                              args=(reward_id,), use_container_width=True, type="primary")
