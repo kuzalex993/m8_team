@@ -9,11 +9,11 @@ load_dotenv()
 
 import logging
 
-from components.firebase import (put_into_user_bonus_collection, put_into_user_challenge_collection,
+from src.m8_team.components.firebase import (put_into_user_bonus_collection, put_into_user_challenge_collection,
                                  get_document, get_value,
                                  get_users, update_value, add_new_document,
                                  get_collection, update_document, get_user_rewards)
-from components.notifications import send_message
+from src.m8_team.components.notifications import send_message
 
 
 
@@ -209,7 +209,7 @@ def show_admin_page():
     if "user_challenge_df" not in st.session_state:
         st.session_state.user_challenge_df = get_user_challenge_df()
     if "transaction_status" not in st.session_state:
-        st.session_state.transaction_status = False
+        st.session_sstate.transaction_status = False
     if "users_data_map" not in st.session_state:
         st.session_state.users_data_map = get_users_map()
     if "bot_endpoint" not in st.session_state:

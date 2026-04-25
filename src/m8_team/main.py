@@ -1,9 +1,9 @@
 import streamlit as st
 st.set_page_config(page_title="M8 team", layout="wide", initial_sidebar_state="auto")
 import streamlit_authenticator as stauth
-from components.firebase import get_credentials, register_user, create_user
-from components.adminPage import show_admin_page
-from components.userPage import show_user_page
+from src.m8_team.components.firebase import get_credentials, register_user, create_user
+from src.m8_team.components.adminPage import show_admin_page
+from src.m8_team.components.userPage import show_user_page
 from dotenv import load_dotenv
 import os
 load_dotenv()

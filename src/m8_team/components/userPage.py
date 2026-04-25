@@ -9,13 +9,13 @@ import pandas as pd
 
 load_dotenv()
 
-from components.firebase import (get_document, get_user_challenges, get_collection, get_value,
+from src.m8_team.components.firebase import (get_document, get_user_challenges, get_collection, get_value,
                                  put_into_user_bonus_collection, 
                                  put_into_user_challenge_collection,
                                  get_users, update_value, add_new_document,
                                  update_document, get_user_rewards)
 
-from components.notifications import send_message
+from src.m8_team.components.notifications import send_message
 
 
 def draw_bonus_chart(_free_bonus: int, _reserved_bonus: int) -> dict:
