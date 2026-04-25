@@ -10,7 +10,9 @@ dependencies = [
     "streamlit-authenticator==0.3.1",
     "streamlit-echarts==0.4.0",
     "streamlit-option-menu==0.3.6",
-    "python-dotenv==1.0.1"
+    "python-dotenv==1.0.1",
+    "requests==2.32.5",
+    "types-requests==2.32.4.20250913"
 ]
 
 [build-system]
@@ -37,6 +39,17 @@ quote-style = "double"
 python_version = "3.12"
 strict = true
 mypy_path = "src"
+
+[[tool.mypy.overrides]]
+module = [
+    "firebase_admin",
+    "firebase_admin.*",
+    "pandas.*",
+    "streamlit_echarts.*",
+    "streamlit_option_menu.*",
+    "streamlit_authenticator.*"
+]
+ignore_missing_imports = true
 
 [dependency-groups]
 dev = [
