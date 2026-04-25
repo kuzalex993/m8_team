@@ -117,7 +117,10 @@ def add_new_user_challenge(challenge_id: int, challenge_duration: int):
         )
         if status:
             notify_user(
-                message=f"Вам назначено новое задание:\nОписание: {st.session_state.challenge_to_assign_description_widget}\nДата начала: {st.session_state.challenge_to_assign_start_date_widget}\nВремя на выполнение: {challenge_duration} дней",
+                message=f"""Вам назначено новое задание:\n
+                Описание: {st.session_state.challenge_to_assign_description_widget}\n
+                Дата начала: {st.session_state.challenge_to_assign_start_date_widget}\n
+                Время на выполнение: {challenge_duration} дней""",
                 user_name=selected_user_id,
             )
             st.session_state.transaction_status = True
@@ -366,7 +369,7 @@ def show_admin_page():
                         format="DD/MM/YYYY",
                     )
                 with col3:
-                    planned_finish_date = st.date_input(
+                    st.date_input(
                         label="Дата окончания",
                         disabled=True,
                         value=start_date + timedelta(days=challenge_duration),
@@ -386,7 +389,8 @@ def show_admin_page():
                     if assign_challenge_btn:
                         if st.session_state.transaction_status:
                             st.success(
-                                f"Задание **{challenge_to_assign}** назначено пользователю **{selected_user_name}**"
+                                f"""Задание **{challenge_to_assign}** 
+                                назначено пользователю **{selected_user_name}**"""
                             )
                             st.session_state.transaction_status = False
                         else:

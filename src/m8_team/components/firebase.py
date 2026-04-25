@@ -128,7 +128,8 @@ def add_new_document(collection_name: str, document_data: dict) -> bool:
         collection_ref = db.collection(collection_name)
         update_time, document_ref = collection_ref.add(document_data=document_data)
         print(
-            f"{update_time} Added new document with id '{document_ref.id}' to collection '{collection_name}'"
+            f"""{update_time} Added new document with id '{document_ref.id}' 
+            to collection '{collection_name}'"""
         )
         return document_ref.id
     except Exception as e:
@@ -163,7 +164,7 @@ def put_into_user_bonus_collection(
     if add_new_document("user_bonus", new_record) is not None:
         return True
     else:
-        False
+        return False
 
 
 def put_into_user_challenge_collection(
@@ -174,7 +175,7 @@ def put_into_user_challenge_collection(
     start_date: date,
     challenge_duration: int,
     challenge_creation_date: datetime,
-):
+) -> bool:
     new_record = {
         "user_id": user_id,
         "user_name": user_name,
@@ -192,7 +193,7 @@ def put_into_user_challenge_collection(
     if add_new_document("user_challenge", new_record) is not None:
         return True
     else:
-        False
+        return False
 
 
 def get_user_challenges(user_id: str, challenge_status: str):

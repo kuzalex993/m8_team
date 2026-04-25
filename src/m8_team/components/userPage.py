@@ -129,15 +129,16 @@ def request_reward(reward_id: str, reward_description: str, reward_price: int):
             "transaction_type": "reserve bonus",
             "user_id": st.session_state.username,
         }
-        new_user_bonus_record_id = add_new_document(
-            collection_name="user_bonus", document_data=new_user_bonus_record
-        )
+        add_new_document(collection_name="user_bonus", document_data=new_user_bonus_record)
     else:
         print(
-            "Returned user_reward_id is 'None'. There was an issue to create new record in user_reward collection"
+            """Returned user_reward_id is 'None'. 
+            There was an issue to create new record in 'user_reward collection'"""
         )
     notify_admin(
-        message=f"Запрошена новая награда:\nПользователь: {st.session_state.user_data['user_name']} \nНаграда: {reward_description}"
+        message=f"""Запрошена новая награда:\n
+        Пользователь: {st.session_state.user_data["user_name"]} \n
+        Награда: {reward_description}"""
     )
     refresh_user_data()
 
@@ -182,9 +183,7 @@ def close_user_challenge(id):
             field="user_free_bonuses",
             value=new_user_bonus,
         )
-        new_user_bonus_record_id = add_new_document(
-            collection_name="user_bonus", document_data=new_user_bonus_record
-        )
+        add_new_document(collection_name="user_bonus", document_data=new_user_bonus_record)
         new_challenges(message=f"Задание закрыто вовремя. Начислено {challenge_reward} бонусов")
 
         updated_user_challenge_data = {
@@ -298,7 +297,8 @@ def show_user_page():
                         )
                 else:
                     st.warning(
-                        f"У вас недостаточно баллов, чтобы получить награду. Стоимость награды **{reward_price}**"
+                        f"""У вас недостаточно баллов, чтобы получить награду. 
+                        Стоимость награды **{reward_price}**"""
                     )
         with st.expander("Запрошенные награды", expanded=False):
             user_rewards = get_user_rewards(user_id=st.session_state.username)
@@ -356,7 +356,7 @@ def show_user_page():
                     format="DD/MM/YYYY",
                 )
             with col3:
-                planned_finish_date = st.date_input(
+                st.date_input(
                     label="Дата окончания",
                     disabled=True,
                     value=start_date + timedelta(days=challenge_duration),

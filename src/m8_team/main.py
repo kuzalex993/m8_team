@@ -1,8 +1,6 @@
-import streamlit as st
-
-st.set_page_config(page_title="M8 team", layout="wide", initial_sidebar_state="auto")
 import os
 
+import streamlit as st
 import streamlit_authenticator as stauth
 from dotenv import load_dotenv
 
@@ -10,6 +8,7 @@ from m8_team.components.adminPage import show_admin_page
 from m8_team.components.firebase import create_user, get_credentials, register_user
 from m8_team.components.userPage import show_user_page
 
+st.set_page_config(page_title="M8 team", layout="wide", initial_sidebar_state="auto")
 load_dotenv()
 
 if "users_config" not in st.session_state or st.session_state["users_config"] is None:
@@ -40,7 +39,7 @@ st.session_state["user_name"], authentication_status, st.session_state["user_id"
     )
 )
 
-if authentication_status == False:
+if not authentication_status:
     st.error("Имя пользователя и/или пароль введены неверно")
 elif authentication_status is None:
     st.warning("Введите имя пользователя и пароль")
