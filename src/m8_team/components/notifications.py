@@ -1,6 +1,7 @@
-import requests
 import os
+
 import certifi
+import requests
 from dotenv import load_dotenv
 
 load_dotenv()
@@ -20,9 +21,10 @@ def check_telegram_api():
     except requests.exceptions.RequestException as e:
         print(f"An error occurred: {e}")
 
+
 def send_message(chat_id, text: str):
     if chat_id is None:
-        print(f"chat_id is None - no notifications will be sent!")
+        print("chat_id is None - no notifications will be sent!")
         return None
     else:
         url = f"{BASE_URL}/sendMessage"
@@ -34,8 +36,3 @@ def send_message(chat_id, text: str):
         except requests.exceptions.RequestException as e:
             print(f"An error occurred: {e}")
             return None
-
-
-
-
-
