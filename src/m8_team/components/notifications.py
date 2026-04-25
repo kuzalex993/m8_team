@@ -1,4 +1,5 @@
 import os
+from typing import Any
 
 import certifi
 import requests
@@ -10,7 +11,7 @@ BOT_TOKEN = os.getenv("BOT_TOKEN")
 BASE_URL = f"https://api.telegram.org/bot{BOT_TOKEN}"
 
 
-def check_telegram_api():
+def check_telegram_api() -> None:
     url = "https://api.telegram.org"
     try:
         response = requests.get(url)
@@ -22,7 +23,7 @@ def check_telegram_api():
         print(f"An error occurred: {e}")
 
 
-def send_message(chat_id, text: str):
+def send_message(chat_id: int | None, text: str) -> Any:
     if chat_id is None:
         print("chat_id is None - no notifications will be sent!")
         return None

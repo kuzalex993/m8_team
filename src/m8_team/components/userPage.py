@@ -1,5 +1,6 @@
 import os
-from datetime import datetime, timedelta
+from datetime import date, datetime, timedelta
+from typing import Any, cast
 
 import pandas as pd
 import streamlit as st
@@ -23,7 +24,7 @@ from m8_team.components.notifications import send_message
 load_dotenv()
 
 
-def draw_bonus_chart(_free_bonus: int, _reserved_bonus: int) -> dict:
+def draw_bonus_chart(_free_bonus: int, _reserved_bonus: int) -> dict[str, Any]:
     options = {
         "tooltip": {"trigger": "item"},
         "series": [
@@ -49,45 +50,42 @@ def draw_bonus_chart(_free_bonus: int, _reserved_bonus: int) -> dict:
     return options
 
 
-def update_user_challenges_status(id_list: list) -> bool:
+def update_user_challenges_status(id_list: list[str]) -> None:
     for id in id_list:
         update_value(
             collection="user_challenge", document=id, field="challenge_status", value="ongoing"
         )
 
 
-def refresh_user_data():
+def refresh_user_data() -> None:
     st.session_state.user_data = get_document(
         collection_name="users", document_name=st.session_state.user_id
     )
 
 
-def notify_admin(message: str):
+def notify_admin(message: str) -> None:
     admin_chat_id = get_value(collection_name="users", document_name="admin", field_name="chat_id")
     send_message(chat_id=admin_chat_id, text=message)
 
 
-def get_challenges_df():
+def get_challenges_df() -> pd.DataFrame:
     challenges = get_collection(collection_name="challenges")
     for challenge in challenges:
         challenge["challenge_date_update"] = str(challenge["challenge_date_update"])
-    df = pd.DataFrame(challenges)
-    return df
+    return pd.DataFrame(challenges)
 
 
-def get_rewards_df():
+def get_rewards_df() -> pd.DataFrame:
     rewards = get_collection(collection_name="rewards")
-    df = pd.DataFrame(rewards)
-    return df
+    return pd.DataFrame(rewards)
 
 
-def get_user_challenge_df():
+def get_user_challenge_df() -> pd.DataFrame:
     user_challenge = get_collection(collection_name="user_challenge")
-    df = pd.DataFrame(user_challenge)
-    return df
+    return pd.DataFrame(user_challenge)
 
 
-def request_reward(reward_id: str, reward_description: str, reward_price: int):
+def request_reward(reward_id: str, reward_description: str, reward_price: int) -> None:
     user_reserved_bonus = get_value(
         collection_name="users",
         document_name=st.session_state.username,
@@ -143,7 +141,7 @@ def request_reward(reward_id: str, reward_description: str, reward_price: int):
     refresh_user_data()
 
 
-def add_new_user_challenge(challenge_id: int, challenge_duration: int):
+def add_new_user_challenge(challenge_id: int, challenge_duration: int) -> None:
     put_into_user_challenge_collection(
         user_id=st.session_state.username,
         user_name=st.session_state.user_data["user_name"],
@@ -155,7 +153,7 @@ def add_new_user_challenge(challenge_id: int, challenge_duration: int):
     )
 
 
-def close_user_challenge(id):
+def close_user_challenge(id: str) -> None:
     if st.session_state["panned_finish_" + id] >= datetime.now().date():
         challenge_id = get_value(
             collection_name="user_challenge", document_name=id, field_name="challenge_id"
@@ -205,12 +203,12 @@ def close_user_challenge(id):
     refresh_user_data()
 
 
-@st.experimental_dialog("Задание закрыто")
-def new_challenges(message: str):
+@st.experimental_dialog("Задание закрыто")  # type: ignore[attr-defined]
+def new_challenges(message: str) -> None:
     st.write(message)
 
 
-def show_user_page():
+def show_user_page() -> None:
     if "user_data" not in st.session_state:
         st.session_state["user_data"] = get_document(
             collection_name="users", document_name=st.session_state.user_id
@@ -302,15 +300,20 @@ def show_user_page():
                     )
         with st.expander("Запрошенные награды", expanded=False):
             user_rewards = get_user_rewards(user_id=st.session_state.username)
-            to_rewards_df = {"description": [], "request_date": [], "status": []}
+            to_rewards_df: dict[str, list[Any]] = {
+                "description": [],
+                "request_date": [],
+                "status": [],
+            }
             for reward in user_rewards:
                 current_reward = reward.to_dict()
                 request_date = datetime.strptime(
-                    current_reward["user_reward_request_date"], "%Y-%m-%dT%H:%M:%S.%fZ"
+                    current_reward["user_reward_request_date"],  # type: ignore #TODO
+                    "%Y-%m-%dT%H:%M:%S.%fZ",
                 )
-                to_rewards_df["description"].append(current_reward["reward_description"])
+                to_rewards_df["description"].append(current_reward["reward_description"])  # type: ignore #TODO
                 to_rewards_df["request_date"].append(request_date)
-                to_rewards_df["status"].append(current_reward["user_reward_status"])
+                to_rewards_df["status"].append(current_reward["user_reward_status"])  # type: ignore #TODO
                 rewards_df = pd.DataFrame(to_rewards_df).sort_values(
                     by="request_date", ascending=False
                 )
@@ -350,11 +353,13 @@ def show_user_page():
                 )
                 challenge_reward = int(selected_challenge["challenge_reward"].values[0])
             with col2:
-                start_date = st.date_input(
+                raw_date = st.date_input(
                     label="Дата начала",
                     key="challenge_to_assign_start_date_widget",
                     format="DD/MM/YYYY",
                 )
+
+            start_date = cast(date, raw_date)
             with col3:
                 st.date_input(
                     label="Дата окончания",
@@ -379,15 +384,17 @@ def show_user_page():
             )
             new_challenges_ids = []
             for challenge in user_challenges_new:
+                if challenge is None:
+                    continue
                 with st.form(f"challenge_form_{challenge.id}"):
                     challenge_cur = challenge.to_dict()
                     new_challenges_ids.append(challenge.id)
-                    st.markdown(body=f"**:new:** {challenge_cur['challenge_descripion']}")
-                    creation_date = challenge_cur["challenge_creation_date"]
+                    st.markdown(body=f"**:new:** {challenge_cur['challenge_descripion']}")  # type: ignore #TODO
+                    creation_date = challenge_cur["challenge_creation_date"]  # type: ignore #TODO
                     st.caption(body=f"Задание добавленo: {creation_date}")
                     col1, col2 = st.columns([1, 1])
                     with col1:
-                        start_date = datetime.strptime(challenge_cur["start_date"], "%Y-%m-%d")
+                        start_date = datetime.strptime(challenge_cur["start_date"], "%Y-%m-%d")  # type: ignore #TODO
                         st.date_input(
                             label="Начало",
                             value=start_date,
@@ -396,11 +403,12 @@ def show_user_page():
                             disabled=True,
                         )
                     with col2:
-                        if challenge_cur["planned_finish_date"] is None:
+                        if challenge_cur["planned_finish_date"] is None:  # type: ignore #TODO
                             end_date = None
                         else:
                             end_date = datetime.strptime(
-                                challenge_cur["planned_finish_date"], "%Y-%m-%d"
+                                challenge_cur["planned_finish_date"],  # type: ignore #TODO
+                                "%Y-%m-%d",
                             )
                         st.date_input(
                             label="Окончание",
@@ -424,10 +432,10 @@ def show_user_page():
                 for challenge in user_challenges_ongoing:
                     with st.form(f"challenge_form_{challenge.id}"):
                         challenge_cur = challenge.to_dict()
-                        st.markdown(body=challenge_cur["challenge_descripion"])
+                        st.markdown(body=challenge_cur["challenge_descripion"])  # type: ignore #TODO
                         col1, col2 = st.columns([1, 1])
                         with col1:
-                            start_date = datetime.strptime(challenge_cur["start_date"], "%Y-%m-%d")
+                            start_date = datetime.strptime(challenge_cur["start_date"], "%Y-%m-%d")  # type: ignore #TODO
                             st.date_input(
                                 label="Начало",
                                 value=start_date,
@@ -436,11 +444,12 @@ def show_user_page():
                                 disabled=True,
                             )
                         with col2:
-                            if challenge_cur["planned_finish_date"] is None:
+                            if challenge_cur["planned_finish_date"] is None:  # type: ignore #TODO
                                 end_date = None
                             else:
                                 end_date = datetime.strptime(
-                                    challenge_cur["planned_finish_date"], "%Y-%m-%d"
+                                    challenge_cur["planned_finish_date"],  # type: ignore #TODO
+                                    "%Y-%m-%d",
                                 )
                             st.date_input(
                                 label="Окончание",

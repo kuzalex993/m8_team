@@ -1,11 +1,17 @@
 import os
+from collections.abc import Iterator
 from datetime import date, datetime, timedelta
 from pathlib import Path
+from typing import Any, cast
 
 import firebase_admin
 from dotenv import load_dotenv
 from firebase_admin import credentials, firestore
+from google.cloud.firestore_v1.base_document import (
+    DocumentSnapshot,
+)
 from google.cloud.firestore_v1.base_query import BaseCompositeFilter, FieldFilter
+from google.cloud.firestore_v1.stream_generator import StreamGenerator
 
 load_dotenv()
 
@@ -31,7 +37,7 @@ except ValueError:
 db = firestore.client(app)
 
 
-def get_credentials() -> dict:
+def get_credentials() -> dict[str, Any]:
     print("Getting credentials")
     doc_ref = db.collection("credentials")
     docs = doc_ref.stream()
@@ -41,7 +47,7 @@ def get_credentials() -> dict:
     return res
 
 
-def register_user(config: dict) -> bool:
+def register_user(config: dict[str, str]) -> bool:
     try:
         for key in config.keys():
             doc_ref = db.collection("credentials").document(key)
@@ -72,7 +78,7 @@ def create_user(email: str, user: str, name: str) -> bool:
         return False
 
 
-def get_users():
+def get_users() -> dict[str, Any]:
     print("Retrieve users data")
     doc_ref = db.collection("users")
     docs = doc_ref.stream()
@@ -82,7 +88,7 @@ def get_users():
     return res
 
 
-def update_value(collection: str, document: str, field: str, value: any):
+def update_value(collection: str, document: str, field: str, value: Any) -> bool:
     try:
         doc_ref = db.collection(collection).document(document)
         doc_ref.update({field: value})
@@ -91,7 +97,7 @@ def update_value(collection: str, document: str, field: str, value: any):
         return False
 
 
-def get_collection(collection_name: str):
+def get_collection(collection_name: str) -> list[dict[Any | str, Any]]:
     print(f"Retrieve {collection_name} data")
     doc_ref = db.collection(collection_name)
     docs = doc_ref.stream()
@@ -99,7 +105,7 @@ def get_collection(collection_name: str):
     return items
 
 
-def get_document(collection_name: str, document_name: str) -> dict:
+def get_document(collection_name: str, document_name: str) -> dict[str, Any] | Any | None:
     print(f"Retrieving data: collection - {collection_name}, document - {document_name}")
     try:
         doc_ref = db.collection(collection_name).document(document_name)
@@ -108,10 +114,10 @@ def get_document(collection_name: str, document_name: str) -> dict:
         return doc_data
     except Exception as e:
         print(e)
-        return False
+        return None
 
 
-def get_value(collection_name: str, document_name: str, field_name: str):
+def get_value(collection_name: str, document_name: str, field_name: str) -> Any:
     try:
         doc_ref = db.collection(collection_name).document(document_name)
         doc = doc_ref.get()
@@ -123,7 +129,7 @@ def get_value(collection_name: str, document_name: str, field_name: str):
         return False
 
 
-def add_new_document(collection_name: str, document_data: dict) -> bool:
+def add_new_document(collection_name: str, document_data: dict[str, Any]) -> Any | None:
     try:
         collection_ref = db.collection(collection_name)
         update_time, document_ref = collection_ref.add(document_data=document_data)
@@ -138,7 +144,7 @@ def add_new_document(collection_name: str, document_data: dict) -> bool:
         return None
 
 
-def update_document(collection_name: str, document_id: str, document_data: dict) -> bool:
+def update_document(collection_name: str, document_id: str, document_data: dict[str, Any]) -> bool:
     try:
         doc_ref = db.collection(collection_name).document(document_id)
         doc_ref.update(document_data)
@@ -151,8 +157,8 @@ def update_document(collection_name: str, document_id: str, document_data: dict)
 
 
 def put_into_user_bonus_collection(
-    user_id: int, transaction_type: str, bonus_value: int, event_type: str, event_id: int
-):
+    user_id: str, transaction_type: str, bonus_value: int, event_type: str, event_id: int | None
+) -> bool:
     new_record = {
         "user_id": user_id,
         "transaction_type": transaction_type,
@@ -174,7 +180,7 @@ def put_into_user_challenge_collection(
     challenge_descripion: str,
     start_date: date,
     challenge_duration: int,
-    challenge_creation_date: datetime,
+    challenge_creation_date: str,
 ) -> bool:
     new_record = {
         "user_id": user_id,
@@ -196,7 +202,7 @@ def put_into_user_challenge_collection(
         return False
 
 
-def get_user_challenges(user_id: str, challenge_status: str):
+def get_user_challenges(user_id: str, challenge_status: str) -> Iterator[DocumentSnapshot]:
 
     print(f"Retrieving challenges of {user_id}")
     try:
@@ -204,35 +210,37 @@ def get_user_challenges(user_id: str, challenge_status: str):
             FieldFilter("user_id", "==", user_id),
             FieldFilter("challenge_status", "==", challenge_status),
         ]
-        docs = (
+        docs = cast(
+            StreamGenerator[DocumentSnapshot],
             db.collection("user_challenge")
-            .where(filter=BaseCompositeFilter("AND", filter_list))
-            .stream()
+            .where(filter=BaseCompositeFilter("AND", filter_list))  # type: ignore[arg-type]
+            .stream(),
         )
         return docs
     except Exception as e:
         print(e)
-        return False
+        return iter([])
 
 
-def get_user_rewards(user_id: str):
+def get_user_rewards(user_id: str) -> Iterator[DocumentSnapshot]:
     print(f"Retrieving rewards of {user_id}")
     if user_id != "all":
         try:
             filter_list = [FieldFilter("user_id", "==", user_id)]
-            docs = (
-                db.collection("user_reward")
-                .where(filter=BaseCompositeFilter("AND", filter_list))
-                .stream()
+            docs = cast(
+                StreamGenerator[DocumentSnapshot],
+                db.collection("user_challenge")
+                .where(filter=BaseCompositeFilter("AND", filter_list))  # type: ignore[arg-type]
+                .stream(),
             )
             return docs
         except Exception as e:
             print(e)
-            return False
+            return iter([])
     else:
         try:
-            docs = db.collection("user_reward").stream()
+            docs = cast(StreamGenerator[DocumentSnapshot], db.collection("user_reward").stream())
             return docs
         except Exception as e:
             print(e)
-            return False
+            return iter([])

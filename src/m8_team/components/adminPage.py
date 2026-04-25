@@ -1,5 +1,6 @@
 import os
-from datetime import datetime, timedelta
+from datetime import date, datetime, timedelta
+from typing import Any, cast
 
 import pandas as pd
 import streamlit as st
@@ -28,7 +29,7 @@ transaction_type_map = {
 }
 
 
-def new_user_selected():
+def new_user_selected() -> None:
     if st.session_state.selected_user_name:
         selected_user_id = st.session_state["users_data_map"][
             st.session_state["selected_user_name"]
@@ -36,12 +37,12 @@ def new_user_selected():
         st.session_state["current_user_balance"] = get_user_bonus(selected_user_id)
 
 
-def notify_user(message: str, user_name: str):
+def notify_user(message: str, user_name: str) -> None:
     user_chat_id = get_value(collection_name="users", document_name=user_name, field_name="chat_id")
     send_message(chat_id=user_chat_id, text=message)
 
 
-def update_user_bonus(user_name):
+def update_user_bonus(user_name: str) -> None:
     additional_bonus = st.session_state.additional_bonus_widget
     transaction_type = transaction_type_map[st.session_state.operation_widget]
     if transaction_type == "write off bonus":
@@ -51,7 +52,7 @@ def update_user_bonus(user_name):
         transaction_type=transaction_type,
         bonus_value=additional_bonus,
         event_type="admin",
-        event_id="None",
+        event_id=None,
     ):
         if update_value(
             collection="users",
@@ -74,7 +75,7 @@ def update_user_bonus(user_name):
     st.session_state.current_user_balance = get_user_bonus(user_name)
 
 
-def add_new_reward():
+def add_new_reward() -> None:
     new_reward = {
         "reward_description": st.session_state.reward_description_widget,
         "reward_price": st.session_state.reward_price_widget,
@@ -87,7 +88,7 @@ def add_new_reward():
     st.session_state.rewards_df = get_rewards_df()
 
 
-def update_reward(reward_id):
+def update_reward(reward_id: str) -> None:
     edited_reward = {
         "reward_description": st.session_state.edit_reward_description_widget,
         "reward_price": st.session_state.edit_reward_price_widget,
@@ -102,7 +103,7 @@ def update_reward(reward_id):
     st.session_state.rewards_df = get_rewards_df()
 
 
-def add_new_user_challenge(challenge_id: int, challenge_duration: int):
+def add_new_user_challenge(challenge_id: int, challenge_duration: int) -> None:
     if st.session_state.selected_user_name:
         selected_user_id = st.session_state.users_data_map[st.session_state.selected_user_name]
         print(st.session_state.challenge_to_assign_start_date_widget)
@@ -128,7 +129,7 @@ def add_new_user_challenge(challenge_id: int, challenge_duration: int):
             st.session_state.user_challenge_df = get_user_challenge_df()
 
 
-def add_new_challenge():
+def add_new_challenge() -> None:
     new_task = {
         "challenge_description": st.session_state.task_description_widget,
         "challenge_reward": st.session_state.task_award_widget,
@@ -143,7 +144,7 @@ def add_new_challenge():
     st.session_state.challenge_df = get_challenges_df()
 
 
-def update_challenge(challenge_id):
+def update_challenge(challenge_id: str) -> None:
     edited_task = {
         "challenge_description": st.session_state.edit_challenge_description_widget,
         "challenge_reward": st.session_state.edit_challenge_reward_widget,
@@ -166,8 +167,8 @@ def get_user_bonus(selected_user_id: str) -> int:
     return user_account
 
 
-def get_users_map() -> dict:
-    user_map = dict()
+def get_users_map() -> dict[str, str]:
+    user_map = {}
     users = get_users()
     for key, value in users.items():
         if key != "admin" and key != "alekseik":
@@ -175,29 +176,26 @@ def get_users_map() -> dict:
     return user_map
 
 
-def get_challenges_df():
+def get_challenges_df() -> pd.DataFrame:
     challenges = get_collection(collection_name="challenges")
     # Convert challenge_date_update to string format
     for challenge in challenges:
         challenge["challenge_date_update"] = str(challenge["challenge_date_update"])
     # Create DataFrame
-    df = pd.DataFrame(challenges)
-    return df
+    return pd.DataFrame(challenges)
 
 
-def get_rewards_df():
+def get_rewards_df() -> pd.DataFrame:
     rewards = get_collection(collection_name="rewards")
-    df = pd.DataFrame(rewards)
-    return df
+    return pd.DataFrame(rewards)
 
 
-def get_user_challenge_df():
+def get_user_challenge_df() -> pd.DataFrame:
     user_challenge = get_collection(collection_name="user_challenge")
-    df = pd.DataFrame(user_challenge)
-    return df
+    return pd.DataFrame(user_challenge)
 
 
-def confirm_user_request(user_reward_id: str, user_id: str, reward_id: str):
+def confirm_user_request(user_reward_id: str, user_id: str, reward_id: str) -> None:
     reward_price = get_value(
         collection_name="rewards", document_name=reward_id, field_name="reward_price"
     )
@@ -237,7 +235,7 @@ def confirm_user_request(user_reward_id: str, user_id: str, reward_id: str):
         )
 
 
-def show_admin_page():
+def show_admin_page() -> None:
     # initialize session variables
     if "task_description" not in st.session_state:
         st.session_state.task_description = ""
@@ -297,11 +295,13 @@ def show_admin_page():
                     col1, col2 = st.columns(2)
                     additional_bonus = 0
                     with col1:
-                        additional_bonus = st.number_input(
-                            label="Бонусы",
-                            value=0,
-                            placeholder="Введите количество бонусов",
-                            key="additional_bonus_widget",
+                        additional_bonus = int(
+                            st.number_input(
+                                label="Бонусы",
+                                value=0,
+                                placeholder="Введите количество бонусов",
+                                key="additional_bonus_widget",
+                            )
                         )
                         operation = st.radio(
                             label="Операция",
@@ -363,11 +363,12 @@ def show_admin_page():
                     )
                     challenge_reward = int(selected_challenge["challenge_reward"].values[0])
                 with col2:
-                    start_date = st.date_input(
+                    raw_date = st.date_input(
                         label="Дата начала",
                         key="challenge_to_assign_start_date_widget",
                         format="DD/MM/YYYY",
                     )
+                    start_date = cast(date, raw_date)
                 with col3:
                     st.date_input(
                         label="Дата окончания",
@@ -424,13 +425,13 @@ def show_admin_page():
                                     label="Дата окончания", format="DD/MM/YYYY"
                                 ),
                                 "challenge_status": st.column_config.TextColumn(
-                                    label="Статус задания", default=False
+                                    label="Статус задания", default="False"
                                 ),
                                 "fact_finish_date": st.column_config.DateColumn(
                                     label="Фактическая дата завершения", format="DD.MM.YYYY"
                                 ),
                                 "challenge_success": st.column_config.TextColumn(
-                                    label="Успех прохождения", default=False
+                                    label="Успех прохождения", default="False"
                                 ),
                             },
                             hide_index=True,
@@ -686,7 +687,7 @@ def show_admin_page():
             )
     elif selected == "Запросы":
         user_rewards = get_user_rewards(user_id="all")
-        completed_rewards_to_df = {
+        completed_rewards_to_df: dict[str, Any] = {
             "name": [],
             "description": [],
             "request_date": [],
@@ -697,21 +698,21 @@ def show_admin_page():
         info_messages = ["Ого! Кажется, пока тут пусто...", "И тут тоже пусто..."]
         for user_reward in user_rewards:
             current_reward = user_reward.to_dict()
-            if current_reward["user_reward_status"] == "new":
+            if current_reward["user_reward_status"] == "new":  # type: ignore #TODO
                 show_info_flag = False
                 with st.form(f"request_form_{user_reward.id}"):
                     request_col1, request_col2, request_col3, request_col4 = st.columns(
                         [2, 1, 1, 1]
                     )
-                    requester_id = current_reward["user_id"]
-                    requester_name = current_reward["user_name"]
-                    reward_id = current_reward["reward_id"]
+                    requester_id = current_reward["user_id"]  # type: ignore #TODO
+                    requester_name = current_reward["user_name"]  # type: ignore #TODO
+                    reward_id = current_reward["reward_id"]  # type: ignore #TODO
                     date_object = datetime.fromisoformat(
-                        current_reward["user_reward_request_date"].replace("Z", "+00:00")
+                        current_reward["user_reward_request_date"].replace("Z", "+00:00")  # type: ignore #TODO
                     )
                     formatted_date = date_object.strftime("%d/%m/%Y")
                     with request_col1:
-                        st.markdown(body=f"{current_reward['reward_description']}")
+                        st.markdown(body=f"{current_reward['reward_description']}")  # type: ignore #TODO
                     with request_col2:
                         st.caption(body=f"{requester_name}")
                     with request_col3:
@@ -729,14 +730,14 @@ def show_admin_page():
                             ),
                         )
             else:
-                completed_rewards_to_df["description"].append(current_reward["reward_description"])
-                completed_rewards_to_df["name"].append(current_reward["user_name"])
+                completed_rewards_to_df["description"].append(current_reward["reward_description"])  # type: ignore #TODO
+                completed_rewards_to_df["name"].append(current_reward["user_name"])  # type: ignore #TODO
                 completed_rewards_to_df["request_date"].append(
-                    current_reward["user_reward_request_date"]
+                    current_reward["user_reward_request_date"]  # type: ignore #TODO
                 )
-                completed_rewards_to_df["status"].append(current_reward["user_reward_status"])
+                completed_rewards_to_df["status"].append(current_reward["user_reward_status"])  # type: ignore #TODO
                 completed_rewards_to_df["decision_date"].append(
-                    current_reward["user_reward_decision_date"]
+                    current_reward["user_reward_decision_date"]  # type: ignore #TODO
                 )
         if show_info_flag:
             st.info(info_messages[0])
