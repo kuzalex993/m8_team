@@ -8,7 +8,7 @@ install:
 
 # start app
 run:
-    uv run streamlit run src/m8_team/main.py
+    APP_ENV=dev uv run streamlit run src/m8_team/main.py
 
 # lint (fast check)
 check:
