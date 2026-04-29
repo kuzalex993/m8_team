@@ -1,44 +1,32 @@
-name: Run CI
+name: CI
 
 on:
-  push:
-    branches:
-      - "feature/**"
-
   pull_request:
-    branches:
-      - "main"
-      - "staging"
-      - "develop"
+    branches: ["main"]
+  push:
+    branches: ["feature/**", "main"]
 
 jobs:
-  lint-and-test:
+  test:
     runs-on: ubuntu-latest
 
     steps:
-      - name: Checkout code
-        uses: actions/checkout@v5
+      - uses: actions/checkout@v5
 
-      - name: Set up Python
-        uses: actions/setup-python@v6
+      - uses: actions/setup-python@v6
         with:
           python-version: "3.12"
 
-      - name: Install uv
-        uses: astral-sh/setup-uv@v6
+      - uses: astral-sh/setup-uv@v6
 
-      - name: Install dependencies
-        run: |
-          uv sync --group dev
+      - name: Install deps
+        run: uv sync --group dev
 
-      - name: Run ruff
-        run: |
-          uv run ruff check .
+      - name: Ruff
+        run: uv run ruff check .
 
-      - name: Run mypy
-        run: |
-          uv run mypy src
+      - name: MyPy
+        run: uv run mypy src
 
-      - name: Run pytest
-        run: |
-          uv run pytest
+      - name: Pytest
+        run: uv run pytest
