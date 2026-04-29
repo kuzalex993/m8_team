@@ -27,3 +27,6 @@ lint: check typecheck
 
 # (lint + format)
 fix: format check typecheck
+
+test: 
+    uv run pytest
