@@ -1,6 +1,8 @@
-import requests
 import os
+from typing import Any
+
 import certifi
+import requests
 from dotenv import load_dotenv
 
 load_dotenv()
@@ -9,7 +11,7 @@ BOT_TOKEN = os.getenv("BOT_TOKEN")
 BASE_URL = f"https://api.telegram.org/bot{BOT_TOKEN}"
 
 
-def check_telegram_api():
+def check_telegram_api() -> None:
     url = "https://api.telegram.org"
     try:
         response = requests.get(url)
@@ -20,9 +22,10 @@ def check_telegram_api():
     except requests.exceptions.RequestException as e:
         print(f"An error occurred: {e}")
 
-def send_message(chat_id, text: str):
+
+def send_message(chat_id: int | None, text: str) -> Any:
     if chat_id is None:
-        print(f"chat_id is None - no notifications will be sent!")
+        print("chat_id is None - no notifications will be sent!")
         return None
     else:
         url = f"{BASE_URL}/sendMessage"
@@ -34,8 +37,3 @@ def send_message(chat_id, text: str):
         except requests.exceptions.RequestException as e:
             print(f"An error occurred: {e}")
             return None
-
-
-
-
-

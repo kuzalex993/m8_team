@@ -1,0 +1,35 @@
+name: Deploy PRODUCTION
+
+on:
+  push:
+    tags:
+      - "v*"
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+
+    environment:
+      name: production
+
+    steps:
+      - uses: actions/checkout@v5
+
+      - uses: actions/setup-python@v6
+        with:
+          python-version: "3.12"
+
+      - uses: astral-sh/setup-uv@v6
+
+      - name: Install deps
+        run: uv sync --group dev
+
+      - name: Run tests
+        run: uv run pytest
+
+      - name: Load Firebase credentials
+        run: echo '${{ secrets.FIREBASE_PSD_CREDENTIALS }}' > firebase.json
+
+      - name: Deploy to PROD
+        run: |
+          echo "Deploying to production..."

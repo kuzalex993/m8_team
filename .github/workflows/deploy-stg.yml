@@ -1,0 +1,33 @@
+name: Deploy STAGING
+
+on:
+  push:
+    branches:
+      - main
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v5
+
+      - uses: actions/setup-python@v6
+        with:
+          python-version: "3.12"
+
+      - uses: astral-sh/setup-uv@v6
+
+      - name: Install deps
+        run: uv sync --group dev
+
+      - name: Run tests again (safe gate)
+        run: uv run pytest
+
+      - name: Write Firebase credentials
+        run: echo '${{ secrets.FIREBASE_STG_CREDENTIALS }}' > firebase.json
+
+      - name: Deploy to STAGING
+        run: |
+          echo "Deploying to STAGING Firebase..."
+          # streamlit run / firebase deploy / docker push
