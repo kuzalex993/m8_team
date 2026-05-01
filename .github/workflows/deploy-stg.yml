@@ -48,6 +48,6 @@ jobs:
             docker run -d \
               --name m8-nop \
               --restart unless-stopped \
-              -p 8501:8080 \
+              -p 8502:8080 \
               --env-file /opt/m8/nop.env \
               ghcr.io/${{ github.repository_owner }}/m8_team:nop
