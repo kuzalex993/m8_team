@@ -3,7 +3,7 @@ default:
     just --list
 
 # install dependecies
-install:
+install: && _init_precommit
     uv sync
 
 # start app
@@ -28,5 +28,8 @@ lint: check typecheck
 # (lint + format)
 fix: format check typecheck
 
-test: 
+test:
     uv run pytest
+
+_init_precommit:
+    uv run pre-commit install

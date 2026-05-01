@@ -1,9 +1,12 @@
-name: Deploy STAGING
+name: Deploy NOP
 
 on:
   push:
-    branches:
-      - main
+    branches: [main]
+
+permissions:
+  contents: read
+  packages: write
 
 jobs:
   deploy:
@@ -12,22 +15,39 @@ jobs:
     steps:
       - uses: actions/checkout@v5
 
-      - uses: actions/setup-python@v6
-        with:
-          python-version: "3.12"
-
       - uses: astral-sh/setup-uv@v6
 
-      - name: Install deps
-        run: uv sync --group dev
-
-      - name: Run tests again (safe gate)
+      - name: Run tests
         run: uv run pytest
 
-      - name: Write Firebase credentials
-        run: echo '${{ secrets.FIREBASE_STG_CREDENTIALS }}' > firebase.json
+      - name: Log in to GHCR
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
 
-      - name: Deploy to STAGING
-        run: |
-          echo "Deploying to STAGING Firebase..."
-          # streamlit run / firebase deploy / docker push
+      - name: Build and push NOP image
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          push: true
+          tags: ghcr.io/${{ github.repository_owner }}/m8_team:nop
+
+      - name: Deploy to NOP via SSH
+        uses: appleboy/ssh-action@v1
+        with:
+          host: ${{ secrets.TIMEWEB_HOST }}
+          username: ${{ secrets.TIMEWEB_USER }}
+          key: ${{ secrets.TIMEWEB_SSH_KEY }}
+          script: |
+            echo "${{ secrets.GHCR_PAT }}" | docker login ghcr.io -u ${{ github.repository_owner }} --password-stdin
+            docker pull ghcr.io/${{ github.repository_owner }}/m8_team:nop
+            docker stop m8-nop || true
+            docker rm m8-nop || true
+            docker run -d \
+              --name m8-nop \
+              --restart unless-stopped \
+              -p 8502:8080 \
+              --env-file /opt/m8/nop.env \
+              ghcr.io/${{ github.repository_owner }}/m8_team:nop
