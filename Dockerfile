@@ -16,4 +16,6 @@ ENTRYPOINT ["sh", "src/entrypoint.sh"]
 CMD ["streamlit", "run", "src/m8_team/main.py", \
      "--server.port=8080", \
      "--server.address=0.0.0.0", \
-     "--server.headless=true"]
+     "--server.headless=true", \
+     "--server.enableCORS=false", \
+     "--server.enableXsrfProtection=false"]
