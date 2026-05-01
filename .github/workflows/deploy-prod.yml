@@ -1,35 +1,55 @@
-name: Deploy PRODUCTION
+name: Deploy PROD
 
 on:
   push:
-    tags:
-      - "v*"
+    branches:
+      - release/**
+
+permissions:
+  contents: read
+  packages: write
 
 jobs:
   deploy:
     runs-on: ubuntu-latest
-
-    environment:
-      name: production
+    environment: production
 
     steps:
       - uses: actions/checkout@v5
 
-      - uses: actions/setup-python@v6
-        with:
-          python-version: "3.12"
-
       - uses: astral-sh/setup-uv@v6
-
-      - name: Install deps
-        run: uv sync --group dev
 
       - name: Run tests
         run: uv run pytest
 
-      - name: Load Firebase credentials
-        run: echo '${{ secrets.FIREBASE_PSD_CREDENTIALS }}' > firebase.json
+      - name: Log in to GHCR
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
 
-      - name: Deploy to PROD
-        run: |
-          echo "Deploying to production..."
+      - name: Build and push PROD image
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          push: true
+          tags: ghcr.io/${{ github.repository_owner }}/m8_team:prod
+
+      - name: Deploy to PROD via SSH
+        uses: appleboy/ssh-action@v1
+        with:
+          host: ${{ secrets.TIMEWEB_HOST }}
+          username: ${{ secrets.TIMEWEB_USER }}
+          key: ${{ secrets.TIMEWEB_SSH_KEY }}
+          script: |
+            echo "${{ secrets.GHCR_PAT }}" | docker login ghcr.io -u ${{ github.repository_owner }} --password-stdin
+            docker pull ghcr.io/${{ github.repository_owner }}/m8_team:prod
+            docker stop m8-prod || true
+            docker rm m8-prod || true
+            docker run -d \
+              --name m8-prod \
+              --restart unless-stopped \
+              -p 8502:8080 \
+              --env-file /opt/m8/prod.env \
+              ghcr.io/${{ github.repository_owner }}/m8_team:prod
