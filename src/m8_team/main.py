@@ -40,7 +40,7 @@ st.session_state["user_name"], authentication_status, st.session_state["user_id"
 )
 
 if not authentication_status:
-    st.error("Имя пользователя и/или пароль введены неверно")
+    st.error("Имя пользователя и/или пароль введены неверно!")
 elif authentication_status is None:
     st.warning("Введите имя пользователя и пароль")
 
