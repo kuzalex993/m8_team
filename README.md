@@ -5,5 +5,5 @@
 After cloning, run once to enable git hooks:
 
 ```sh
-git config core.hooksPath .githooks
+pre-commit install
 ```
