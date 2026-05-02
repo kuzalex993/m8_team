@@ -1,3 +1,4 @@
+import logging
 import os
 from collections.abc import Iterator
 from datetime import date, datetime, timedelta
@@ -14,6 +15,12 @@ from google.cloud.firestore_v1.base_query import BaseCompositeFilter, FieldFilte
 from google.cloud.firestore_v1.stream_generator import StreamGenerator
 
 load_dotenv()
+
+logger = logging.getLogger(__name__)
+logger.setLevel(logging.INFO)
+_handler = logging.StreamHandler()
+_handler.setFormatter(logging.Formatter("%(asctime)s - %(name)s - %(levelname)s - %(message)s"))
+logger.addHandler(_handler)
 
 BASE_DIR = Path(__file__).resolve().parents[2]
 
@@ -38,7 +45,7 @@ db = firestore.client(app)
 
 
 def get_credentials() -> dict[str, Any]:
-    print("Getting credentials")
+    logger.info("Getting credentials")
     doc_ref = db.collection("credentials")
     docs = doc_ref.stream()
     res = dict()
@@ -54,7 +61,7 @@ def register_user(config: dict[str, str]) -> bool:
             doc_ref.update(config[key])
         return True
     except Exception as e:
-        print(f"Error:{e}")
+        logger.error(f"Error:{e}")
         return False
 
 
@@ -74,12 +81,12 @@ def create_user(email: str, user: str, name: str) -> bool:
         document_ref.set(data)
         return True
     except Exception as e:
-        print(e)
+        logger.error(e)
         return False
 
 
 def get_users() -> dict[str, Any]:
-    print("Retrieve users data")
+    logger.info("Retrieve users data")
     doc_ref = db.collection("users")
     docs = doc_ref.stream()
     res = dict()
@@ -98,7 +105,7 @@ def update_value(collection: str, document: str, field: str, value: Any) -> bool
 
 
 def get_collection(collection_name: str) -> list[dict[Any | str, Any]]:
-    print(f"Retrieve {collection_name} data")
+    logger.info(f"Retrieve {collection_name} data")
     doc_ref = db.collection(collection_name)
     docs = doc_ref.stream()
     items = list(map(lambda x: {**x.to_dict(), "id": x.id}, docs))
@@ -106,14 +113,14 @@ def get_collection(collection_name: str) -> list[dict[Any | str, Any]]:
 
 
 def get_document(collection_name: str, document_name: str) -> dict[str, Any] | Any | None:
-    print(f"Retrieving data: collection - {collection_name}, document - {document_name}")
+    logger.info(f"Retrieving data: collection - {collection_name}, document - {document_name}")
     try:
         doc_ref = db.collection(collection_name).document(document_name)
         doc = doc_ref.get()
         doc_data = doc.to_dict()
         return doc_data
     except Exception as e:
-        print(e)
+        logger.error(e)
         return None
 
 
@@ -125,7 +132,7 @@ def get_value(collection_name: str, document_name: str, field_name: str) -> Any:
         field_value = doc_data[field_name]
         return field_value
     except Exception as e:
-        print(e)
+        logger.error(e)
         return False
 
 
@@ -133,14 +140,14 @@ def add_new_document(collection_name: str, document_data: dict[str, Any]) -> Any
     try:
         collection_ref = db.collection(collection_name)
         update_time, document_ref = collection_ref.add(document_data=document_data)
-        print(
-            f"""{update_time} Added new document with id '{document_ref.id}' 
+        logger.info(
+            f"""{update_time} Added new document with id '{document_ref.id}'
             to collection '{collection_name}'"""
         )
         return document_ref.id
     except Exception as e:
-        print(f"Error: Couldn't add document to collection '{collection_name}'")
-        print(f"--- Error message: {e}")
+        logger.error(f"Error: Couldn't add document to collection '{collection_name}'")
+        logger.error(f"--- Error message: {e}")
         return None
 
 
@@ -148,11 +155,13 @@ def update_document(collection_name: str, document_id: str, document_data: dict[
     try:
         doc_ref = db.collection(collection_name).document(document_id)
         doc_ref.update(document_data)
-        print(f"Updated document '{document_id}' in collection '{collection_name}'")
+        logger.info(f"Updated document '{document_id}' in collection '{collection_name}'")
         return True
     except Exception as e:
-        print(f"Error: Couldn't update  document '{document_id}' in collection '{collection_name}'")
-        print(f"--- Error message: {e}")
+        logger.error(
+            f"Error: Couldn't update  document '{document_id}' in collection '{collection_name}'"
+        )
+        logger.error(f"--- Error message: {e}")
         return False
 
 
@@ -204,7 +213,7 @@ def put_into_user_challenge_collection(
 
 def get_user_challenges(user_id: str, challenge_status: str) -> Iterator[DocumentSnapshot]:
 
-    print(f"Retrieving challenges of {user_id}")
+    logger.info(f"Retrieving challenges of {user_id}")
     try:
         filter_list = [
             FieldFilter("user_id", "==", user_id),
@@ -218,29 +227,29 @@ def get_user_challenges(user_id: str, challenge_status: str) -> Iterator[Documen
         )
         return docs
     except Exception as e:
-        print(e)
+        logger.error(e)
         return iter([])
 
 
 def get_user_rewards(user_id: str) -> Iterator[DocumentSnapshot]:
-    print(f"Retrieving rewards of {user_id}")
+    logger.info(f"Retrieving rewards of {user_id}")
     if user_id != "all":
         try:
             filter_list = [FieldFilter("user_id", "==", user_id)]
             docs = cast(
                 StreamGenerator[DocumentSnapshot],
-                db.collection("user_challenge")
+                db.collection("user_reward")
                 .where(filter=BaseCompositeFilter("AND", filter_list))  # type: ignore[arg-type]
                 .stream(),
             )
             return docs
         except Exception as e:
-            print(e)
+            logger.error(e)
             return iter([])
     else:
         try:
             docs = cast(StreamGenerator[DocumentSnapshot], db.collection("user_reward").stream())
             return docs
         except Exception as e:
-            print(e)
+            logger.error(e)
             return iter([])
