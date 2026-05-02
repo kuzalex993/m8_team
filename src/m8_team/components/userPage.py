@@ -1,3 +1,4 @@
+import logging
 import os
 from datetime import date, datetime, timedelta
 from typing import Any, cast
@@ -22,6 +23,13 @@ from m8_team.components.firebase import (
 from m8_team.components.notifications import send_message
 
 load_dotenv()
+
+logger = logging.getLogger(__name__)
+logger = logging.getLogger(__name__)
+logger.setLevel(logging.INFO)
+_handler = logging.StreamHandler()
+_handler.setFormatter(logging.Formatter("%(asctime)s - %(name)s - %(levelname)s - %(message)s"))
+logger.addHandler(_handler)
 
 
 def draw_bonus_chart(_free_bonus: int, _reserved_bonus: int) -> dict[str, Any]:
@@ -130,7 +138,7 @@ def request_reward(reward_id: str, reward_description: str, reward_price: int) -
         add_new_document(collection_name="user_bonus", document_data=new_user_bonus_record)
     else:
         print(
-            """Returned user_reward_id is 'None'. 
+            """Returned user_reward_id is 'None'.
             There was an issue to create new record in 'user_reward collection'"""
         )
     notify_admin(
@@ -295,7 +303,7 @@ def show_user_page() -> None:
                         )
                 else:
                     st.warning(
-                        f"""У вас недостаточно баллов, чтобы получить награду. 
+                        f"""У вас недостаточно баллов, чтобы получить награду.
                         Стоимость награды **{reward_price}**"""
                     )
         with st.expander("Запрошенные награды", expanded=False):
@@ -307,6 +315,7 @@ def show_user_page() -> None:
             }
             for reward in user_rewards:
                 current_reward = reward.to_dict()
+                logger.info(current_reward)
                 request_date = datetime.strptime(
                     current_reward["user_reward_request_date"],  # type: ignore #TODO
                     "%Y-%m-%dT%H:%M:%S.%fZ",
