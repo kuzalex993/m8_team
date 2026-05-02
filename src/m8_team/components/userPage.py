@@ -315,7 +315,6 @@ def show_user_page() -> None:
             }
             for reward in user_rewards:
                 current_reward = reward.to_dict()
-                logger.info(current_reward)
                 request_date = datetime.strptime(
                     current_reward["user_reward_request_date"],  # type: ignore #TODO
                     "%Y-%m-%dT%H:%M:%S.%fZ",
