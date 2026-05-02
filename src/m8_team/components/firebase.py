@@ -238,7 +238,7 @@ def get_user_rewards(user_id: str) -> Iterator[DocumentSnapshot]:
             filter_list = [FieldFilter("user_id", "==", user_id)]
             docs = cast(
                 StreamGenerator[DocumentSnapshot],
-                db.collection("user_challenge")
+                db.collection("user_reward")
                 .where(filter=BaseCompositeFilter("AND", filter_list))  # type: ignore[arg-type]
                 .stream(),
             )
