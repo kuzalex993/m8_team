@@ -13,10 +13,9 @@ from m8_team.components.firebase import (
     get_user_rewards,
     get_users,
     get_value,
-    put_into_user_bonus_collection,
     put_into_user_challenge_collection,
     update_document,
-    update_value,
+    update_user_bonus_atomic,
 )
 from m8_team.components.notifications import send_message
 
@@ -47,30 +46,24 @@ def update_user_bonus(user_name: str) -> None:
     transaction_type = transaction_type_map[st.session_state.operation_widget]
     if transaction_type == "write off bonus":
         additional_bonus *= -1
-    if put_into_user_bonus_collection(
+    if update_user_bonus_atomic(
         user_id=user_name,
         transaction_type=transaction_type,
         bonus_value=additional_bonus,
         event_type="admin",
         event_id=None,
     ):
-        if update_value(
-            collection="users",
-            document=user_name,
-            field="user_free_bonuses",
-            value=st.session_state.new_user_balance,
-        ):
-            if additional_bonus > 0:
-                notify_user(
-                    message=f"Администратор добавил вам {additional_bonus} бонусов",
-                    user_name=user_name,
-                )
-            elif additional_bonus < 0:
-                notify_user(
-                    message=f"Администратор уменьшил ваш баланс на {additional_bonus} бонусов",
-                    user_name=user_name,
-                )
-            st.session_state.transaction_status = True
+        if additional_bonus > 0:
+            notify_user(
+                message=f"Администратор добавил вам {additional_bonus} бонусов",
+                user_name=user_name,
+            )
+        elif additional_bonus < 0:
+            notify_user(
+                message=f"Администратор уменьшил ваш баланс на {additional_bonus} бонусов",
+                user_name=user_name,
+            )
+        st.session_state.transaction_status = True
         st.session_state.additional_bonus_widget = 0
     st.session_state.current_user_balance = get_user_bonus(user_name)
 
@@ -259,9 +252,6 @@ def show_admin_page() -> None:
     if "bot_endpoint" not in st.session_state:
         st.session_state["bot_endpoint"] = os.getenv("T_BOT_ENDPOINT")
 
-    # to check if wee need these variables in session_state
-    if "new_user_balance" not in st.session_state:
-        st.session_state.new_user_balance = None
     if "current_user_balance" not in st.session_state:
         st.session_state.current_user_balance = None
 
@@ -320,10 +310,7 @@ def show_admin_page() -> None:
                             help=None,
                             label_visibility="visible",
                         )
-                        st.session_state.new_user_balance = (
-                            st.session_state.current_user_balance + additional_bonus
-                        )
-                    if st.session_state.new_user_balance < 0:
+                    if st.session_state.current_user_balance + additional_bonus < 0:
                         st.warning("Надостаточно текущего баланса для совершения операции")
                     else:
                         add_bonus = st.button(
@@ -390,7 +377,7 @@ def show_admin_page() -> None:
                     if assign_challenge_btn:
                         if st.session_state.transaction_status:
                             st.success(
-                                f"""Задание **{challenge_to_assign}** 
+                                f"""Задание **{challenge_to_assign}**
                                 назначено пользователю **{selected_user_name}**"""
                             )
                             st.session_state.transaction_status = False
