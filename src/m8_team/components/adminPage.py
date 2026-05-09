@@ -161,10 +161,20 @@ def update_challenge(challenge_id: str) -> None:
     st.session_state.challenge_df = get_challenges_df()
 
 
-def get_user_bonus(selected_user_id: str) -> int:
-    users_data = get_users()
-    user_account = int(users_data[selected_user_id]["user_free_bonuses"])
-    return user_account
+def get_user_bonus(selected_user_id: str) -> int | None:
+    user_bonus = get_value(
+        collection_name="users", document_name=selected_user_id, field_name="user_free_bonuses"
+    )
+    if isinstance(user_bonus, int):
+        return user_bonus
+    if isinstance(user_bonus, str):
+        try:
+            return int(user_bonus)
+        except Exception as e:
+            logger.error(f"Couldn't convert 'user_bonus' to int. Error message: {e}")
+            return None
+    logger.error(f"'user_bonus' has unsupported type {type(user_bonus)}")
+    return None
 
 
 def get_users_map() -> dict[str, str]:
