@@ -115,7 +115,6 @@ def update_reward(reward_id: str) -> None:
 def add_new_user_challenge(challenge_id: int, challenge_duration: int) -> None:
     if st.session_state.selected_user_name:
         selected_user_id = st.session_state.users_data_map[st.session_state.selected_user_name]
-        print(st.session_state.challenge_to_assign_start_date_widget)
         status = put_into_user_challenge_collection(
             user_id=selected_user_id,
             user_name=st.session_state.selected_user_name,
@@ -225,7 +224,7 @@ def confirm_user_request(user_reward_id: str, user_id: str, reward_id: str) -> N
         collection_name="users", document_name=user_id, field_name="user_reserved_bonuses"
     )
     if reward_price > user_reserved_bonus:
-        print("Error! Lack of reserved bonuses")
+        logger.error("Error! Lack of reserved bonuses")
     else:
         updated_user_data = {"user_reserved_bonuses": user_reserved_bonus - reward_price}
         update_document(
