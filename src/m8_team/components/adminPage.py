@@ -48,13 +48,22 @@ def notify_user(message: str, user_name: str) -> None:
     send_message(chat_id=user_chat_id, text=message)
 
 
-def update_user_bonus(user_name: str) -> None:
+def is_balance_sufficient(delta: int) -> bool:
+    if st.session_state["current_user_balance"] < delta:
+        return False
+    return True
+
+
+def update_user_bonus(user_id: str) -> None:
     additional_bonus = st.session_state.additional_bonus_widget
     transaction_type = transaction_type_map[st.session_state.operation_widget]
     if transaction_type == "write off bonus":
+        if not is_balance_sufficient(additional_bonus):
+            st.session_state.insufficient_balance_error = True
+            return
         additional_bonus *= -1
     if update_user_bonus_atomic(
-        user_id=user_name,
+        user_id=user_id,
         transaction_type=transaction_type,
         bonus_value=additional_bonus,
         event_type="admin",
@@ -63,16 +72,16 @@ def update_user_bonus(user_name: str) -> None:
         if additional_bonus > 0:
             notify_user(
                 message=f"Администратор добавил вам {additional_bonus} бонусов",
-                user_name=user_name,
+                user_name=user_id,
             )
         elif additional_bonus < 0:
             notify_user(
                 message=f"Администратор уменьшил ваш баланс на {additional_bonus} бонусов",
-                user_name=user_name,
+                user_name=user_id,
             )
         st.session_state.transaction_status = True
         st.session_state.additional_bonus_widget = 0
-    st.session_state.current_user_balance = get_user_bonus(user_name)
+    st.session_state.current_user_balance = get_user_bonus(user_id)
 
 
 def add_new_reward() -> None:
@@ -271,6 +280,10 @@ def show_admin_page() -> None:
 
     if "current_user_balance" not in st.session_state:
         st.session_state.current_user_balance = None
+    if "insufficient_balance_error" not in st.session_state:
+        st.session_state.insufficient_balance_error = False
+    if "additional_bonus_widget" not in st.session_state:
+        st.session_state.additional_bonus_widget = 0
 
     with st.sidebar:
         selected = option_menu(
@@ -305,7 +318,7 @@ def show_admin_page() -> None:
                         additional_bonus = int(
                             st.number_input(
                                 label="Бонусы",
-                                value=0,
+                                min_value=0,
                                 placeholder="Введите количество бонусов",
                                 key="additional_bonus_widget",
                             )
@@ -328,7 +341,7 @@ def show_admin_page() -> None:
                             label_visibility="visible",
                         )
                     if st.session_state.current_user_balance + additional_bonus < 0:
-                        st.warning("Надостаточно текущего баланса для совершения операции")
+                        st.warning("Недостаточно текущего баланса для совершения операции")
                     else:
                         add_bonus = st.button(
                             "Изменить баланс",
@@ -338,7 +351,10 @@ def show_admin_page() -> None:
                             type="primary",
                         )
                         if add_bonus:
-                            if st.session_state.transaction_status:
+                            if st.session_state.insufficient_balance_error:
+                                st.warning("Недостаточно бонусов для списания")
+                                st.session_state.insufficient_balance_error = False
+                            elif st.session_state.transaction_status:
                                 st.success(f"Баланс пользователя {selected_user_name} обновлен")
                                 st.session_state.transaction_status = False
                             else:
