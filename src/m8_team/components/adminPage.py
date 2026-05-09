@@ -1,3 +1,4 @@
+import logging
 import os
 from datetime import date, datetime, timedelta
 from typing import Any, cast
@@ -20,6 +21,12 @@ from m8_team.components.firebase import (
 from m8_team.components.notifications import send_message
 
 load_dotenv()
+logger = logging.getLogger(__name__)
+logger.setLevel(logging.INFO)
+if not logger.handlers:
+    _handler = logging.StreamHandler()
+    _handler.setFormatter(logging.Formatter("%(asctime)s - %(name)s - %(levelname)s - %(message)s"))
+    logger.addHandler(_handler)
 
 transaction_type_map = {
     "Добавить": "charge bonus",
