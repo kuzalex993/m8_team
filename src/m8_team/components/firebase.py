@@ -166,23 +166,6 @@ def update_document(collection_name: str, document_id: str, document_data: dict[
         return False
 
 
-def put_into_user_bonus_collection(
-    user_id: str, transaction_type: str, bonus_value: int, event_type: str, event_id: int | None
-) -> bool:
-    new_record = {
-        "user_id": user_id,
-        "transaction_type": transaction_type,
-        "bonus_value": bonus_value,
-        "event_type": event_type,
-        "event_id": event_id,
-        "date": datetime.utcnow().strftime("%Y-%m-%dT%H:%M:%S.%fZ"),
-    }
-    if add_new_document("user_bonus", new_record) is not None:
-        return True
-    else:
-        return False
-
-
 def update_user_bonus_atomic(
     user_id: str,
     transaction_type: str,
