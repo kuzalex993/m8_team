@@ -137,7 +137,7 @@ def request_reward(reward_id: str, reward_description: str, reward_price: int) -
         }
         add_new_document(collection_name="user_bonus", document_data=new_user_bonus_record)
     else:
-        print(
+        logger.error(
             """Returned user_reward_id is 'None'.
             There was an issue to create new record in 'user_reward collection'"""
         )

@@ -1,7 +1,7 @@
 import logging
 import os
 from collections.abc import Iterator
-from datetime import date, datetime, timedelta
+from datetime import UTC, date, datetime, timedelta
 from pathlib import Path
 from typing import Any, cast
 
@@ -18,9 +18,10 @@ load_dotenv()
 
 logger = logging.getLogger(__name__)
 logger.setLevel(logging.INFO)
-_handler = logging.StreamHandler()
-_handler.setFormatter(logging.Formatter("%(asctime)s - %(name)s - %(levelname)s - %(message)s"))
-logger.addHandler(_handler)
+if not logger.handlers:
+    _handler = logging.StreamHandler()
+    _handler.setFormatter(logging.Formatter("%(asctime)s - %(name)s - %(levelname)s - %(message)s"))
+    logger.addHandler(_handler)
 
 BASE_DIR = Path(__file__).resolve().parents[2]
 
@@ -165,20 +166,32 @@ def update_document(collection_name: str, document_id: str, document_data: dict[
         return False
 
 
-def put_into_user_bonus_collection(
-    user_id: str, transaction_type: str, bonus_value: int, event_type: str, event_id: int | None
+def update_user_bonus_atomic(
+    user_id: str,
+    transaction_type: str,
+    bonus_value: int,
+    event_type: str,
+    event_id: int | None,
 ) -> bool:
-    new_record = {
-        "user_id": user_id,
-        "transaction_type": transaction_type,
-        "bonus_value": bonus_value,
-        "event_type": event_type,
-        "event_id": event_id,
-        "date": datetime.utcnow().strftime("%Y-%m-%dT%H:%M:%S.%fZ"),
-    }
-    if add_new_document("user_bonus", new_record) is not None:
+    try:
+        new_bonus_ref = db.collection("user_bonus").document()
+        user_ref = db.collection("users").document(user_id)
+        new_record = {
+            "user_id": user_id,
+            "transaction_type": transaction_type,
+            "bonus_value": bonus_value,
+            "event_type": event_type,
+            "event_id": event_id,
+            "date": datetime.now(UTC).strftime("%Y-%m-%dT%H:%M:%S.%fZ"),
+        }
+        batch = db.batch()
+        batch.set(new_bonus_ref, new_record)
+        batch.update(user_ref, {"user_free_bonuses": firestore.Increment(bonus_value)})
+        batch.commit()
+        logger.info(f"Atomic bonus update for user '{user_id}': delta={bonus_value}")
         return True
-    else:
+    except Exception as e:
+        logger.error(f"Atomic bonus update failed for user '{user_id}': {e}")
         return False
 
 

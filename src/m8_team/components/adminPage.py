@@ -1,3 +1,4 @@
+import logging
 import os
 from datetime import date, datetime, timedelta
 from typing import Any, cast
@@ -13,14 +14,19 @@ from m8_team.components.firebase import (
     get_user_rewards,
     get_users,
     get_value,
-    put_into_user_bonus_collection,
     put_into_user_challenge_collection,
     update_document,
-    update_value,
+    update_user_bonus_atomic,
 )
 from m8_team.components.notifications import send_message
 
 load_dotenv()
+logger = logging.getLogger(__name__)
+logger.setLevel(logging.INFO)
+if not logger.handlers:
+    _handler = logging.StreamHandler()
+    _handler.setFormatter(logging.Formatter("%(asctime)s - %(name)s - %(levelname)s - %(message)s"))
+    logger.addHandler(_handler)
 
 transaction_type_map = {
     "Добавить": "charge bonus",
@@ -42,37 +48,40 @@ def notify_user(message: str, user_name: str) -> None:
     send_message(chat_id=user_chat_id, text=message)
 
 
-def update_user_bonus(user_name: str) -> None:
+def is_balance_sufficient(delta: int) -> bool:
+    if st.session_state["current_user_balance"] < delta:
+        return False
+    return True
+
+
+def update_user_bonus(user_id: str) -> None:
     additional_bonus = st.session_state.additional_bonus_widget
     transaction_type = transaction_type_map[st.session_state.operation_widget]
     if transaction_type == "write off bonus":
+        if not is_balance_sufficient(additional_bonus):
+            st.session_state.insufficient_balance_error = True
+            return
         additional_bonus *= -1
-    if put_into_user_bonus_collection(
-        user_id=user_name,
+    if update_user_bonus_atomic(
+        user_id=user_id,
         transaction_type=transaction_type,
         bonus_value=additional_bonus,
         event_type="admin",
         event_id=None,
     ):
-        if update_value(
-            collection="users",
-            document=user_name,
-            field="user_free_bonuses",
-            value=st.session_state.new_user_balance,
-        ):
-            if additional_bonus > 0:
-                notify_user(
-                    message=f"Администратор добавил вам {additional_bonus} бонусов",
-                    user_name=user_name,
-                )
-            elif additional_bonus < 0:
-                notify_user(
-                    message=f"Администратор уменьшил ваш баланс на {additional_bonus} бонусов",
-                    user_name=user_name,
-                )
-            st.session_state.transaction_status = True
+        if additional_bonus > 0:
+            notify_user(
+                message=f"Администратор добавил вам {additional_bonus} бонусов",
+                user_name=user_id,
+            )
+        elif additional_bonus < 0:
+            notify_user(
+                message=f"Администратор уменьшил ваш баланс на {additional_bonus} бонусов",
+                user_name=user_id,
+            )
+        st.session_state.transaction_status = True
         st.session_state.additional_bonus_widget = 0
-    st.session_state.current_user_balance = get_user_bonus(user_name)
+    st.session_state.current_user_balance = get_user_bonus(user_id)
 
 
 def add_new_reward() -> None:
@@ -106,7 +115,6 @@ def update_reward(reward_id: str) -> None:
 def add_new_user_challenge(challenge_id: int, challenge_duration: int) -> None:
     if st.session_state.selected_user_name:
         selected_user_id = st.session_state.users_data_map[st.session_state.selected_user_name]
-        print(st.session_state.challenge_to_assign_start_date_widget)
         status = put_into_user_challenge_collection(
             user_id=selected_user_id,
             user_name=st.session_state.selected_user_name,
@@ -161,10 +169,20 @@ def update_challenge(challenge_id: str) -> None:
     st.session_state.challenge_df = get_challenges_df()
 
 
-def get_user_bonus(selected_user_id: str) -> int:
-    users_data = get_users()
-    user_account = int(users_data[selected_user_id]["user_free_bonuses"])
-    return user_account
+def get_user_bonus(selected_user_id: str) -> int | None:
+    user_bonus = get_value(
+        collection_name="users", document_name=selected_user_id, field_name="user_free_bonuses"
+    )
+    if isinstance(user_bonus, int):
+        return user_bonus
+    if isinstance(user_bonus, str):
+        try:
+            return int(user_bonus)
+        except Exception as e:
+            logger.error(f"Couldn't convert 'user_bonus' to int. Error message: {e}")
+            return None
+    logger.error(f"'user_bonus' has unsupported type {type(user_bonus)}")
+    return None
 
 
 def get_users_map() -> dict[str, str]:
@@ -206,7 +224,7 @@ def confirm_user_request(user_reward_id: str, user_id: str, reward_id: str) -> N
         collection_name="users", document_name=user_id, field_name="user_reserved_bonuses"
     )
     if reward_price > user_reserved_bonus:
-        print("Error! Lack of reserved bonuses")
+        logger.error("Error! Lack of reserved bonuses")
     else:
         updated_user_data = {"user_reserved_bonuses": user_reserved_bonus - reward_price}
         update_document(
@@ -259,11 +277,12 @@ def show_admin_page() -> None:
     if "bot_endpoint" not in st.session_state:
         st.session_state["bot_endpoint"] = os.getenv("T_BOT_ENDPOINT")
 
-    # to check if wee need these variables in session_state
-    if "new_user_balance" not in st.session_state:
-        st.session_state.new_user_balance = None
     if "current_user_balance" not in st.session_state:
         st.session_state.current_user_balance = None
+    if "insufficient_balance_error" not in st.session_state:
+        st.session_state.insufficient_balance_error = False
+    if "additional_bonus_widget" not in st.session_state:
+        st.session_state.additional_bonus_widget = 0
 
     with st.sidebar:
         selected = option_menu(
@@ -298,7 +317,7 @@ def show_admin_page() -> None:
                         additional_bonus = int(
                             st.number_input(
                                 label="Бонусы",
-                                value=0,
+                                min_value=0,
                                 placeholder="Введите количество бонусов",
                                 key="additional_bonus_widget",
                             )
@@ -320,11 +339,8 @@ def show_admin_page() -> None:
                             help=None,
                             label_visibility="visible",
                         )
-                        st.session_state.new_user_balance = (
-                            st.session_state.current_user_balance + additional_bonus
-                        )
-                    if st.session_state.new_user_balance < 0:
-                        st.warning("Надостаточно текущего баланса для совершения операции")
+                    if st.session_state.current_user_balance + additional_bonus < 0:
+                        st.warning("Недостаточно текущего баланса для совершения операции")
                     else:
                         add_bonus = st.button(
                             "Изменить баланс",
@@ -334,7 +350,10 @@ def show_admin_page() -> None:
                             type="primary",
                         )
                         if add_bonus:
-                            if st.session_state.transaction_status:
+                            if st.session_state.insufficient_balance_error:
+                                st.warning("Недостаточно бонусов для списания")
+                                st.session_state.insufficient_balance_error = False
+                            elif st.session_state.transaction_status:
                                 st.success(f"Баланс пользователя {selected_user_name} обновлен")
                                 st.session_state.transaction_status = False
                             else:
@@ -390,7 +409,7 @@ def show_admin_page() -> None:
                     if assign_challenge_btn:
                         if st.session_state.transaction_status:
                             st.success(
-                                f"""Задание **{challenge_to_assign}** 
+                                f"""Задание **{challenge_to_assign}**
                                 назначено пользователю **{selected_user_name}**"""
                             )
                             st.session_state.transaction_status = False

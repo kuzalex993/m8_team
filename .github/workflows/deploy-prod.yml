@@ -50,6 +50,7 @@ jobs:
             docker run -d \
               --name m8-prod \
               --restart unless-stopped \
-              -p 8502:8080 \
+              -p 8503:8080 \
               --env-file /opt/m8/prod.env \
+              -v /opt/m8/prod-firebase.json:/app/src/credentials/m8-team-prod-firebase.json:ro \
               ghcr.io/${{ github.repository_owner }}/m8_team:prod
