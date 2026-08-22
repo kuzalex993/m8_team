@@ -4,7 +4,7 @@ import streamlit as st
 import streamlit_authenticator as stauth
 from dotenv import load_dotenv
 
-from m8_team.components.adminPage import show_admin_page
+from m8_team.components.admin import show_admin_page
 from m8_team.components.firebase import create_user, get_credentials, register_user
 from m8_team.components.userPage import show_user_page
 
