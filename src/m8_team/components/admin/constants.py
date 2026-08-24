@@ -12,7 +12,7 @@ USER_REWARD_COLLECTION = "user_reward"
 USER_BONUS_COLLECTION = "user_bonus"
 
 # Accounts that are not real employees and should not show up in the "Сотрудники" picker.
-EXCLUDED_FROM_EMPLOYEE_LIST = {"admin", "alekseik"}
+EXCLUDED_FROM_EMPLOYEE_LIST = {"admin", "alekseik", "alekseikuzmin", "elenabelokopytova"}
 
 TRANSACTION_TYPE_MAP = {
     "Добавить": "charge bonus",
