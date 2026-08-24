@@ -8,11 +8,17 @@ used to be scattered through show_admin_page().
 """
 
 import logging
+from datetime import date
 
 import pandas as pd
 import streamlit as st
 
-from m8_team.components.firebase import get_collection, get_users, get_value
+from m8_team.components.firebase import (
+    get_collection,
+    get_earned_bonus_in_range,
+    get_users,
+    get_value,
+)
 
 from .constants import (
     CHALLENGES_COLLECTION,
@@ -88,3 +94,25 @@ def get_user_challenge_df(*, force_refresh: bool = False) -> pd.DataFrame:
     if force_refresh or "user_challenge_df" not in st.session_state:
         st.session_state.user_challenge_df = _fetch_user_challenge_df()
     return st.session_state.user_challenge_df
+
+
+def _fetch_earned_bonus_df(start: date, end: date) -> pd.DataFrame:
+    docs = get_earned_bonus_in_range(start=start, end=end)
+    records = []
+    for doc in docs:
+        doc_data = doc.to_dict()
+        if doc_data is None:
+            continue
+        records.append({**doc_data, "id": doc.id})
+    return pd.DataFrame(records)
+
+
+def get_earned_bonus_df(start: date, end: date, *, force_refresh: bool = False) -> pd.DataFrame:
+    """ "charge bonus" transactions for [start, end], re-fetched whenever the range changes -
+    the query is already scoped server-side (see get_earned_bonus_in_range), so there's no
+    whole-collection cache to keep fresh here the way the other get_x_df functions have."""
+    range_key = (start, end)
+    if force_refresh or st.session_state.get("earned_bonus_range_key") != range_key:
+        st.session_state.earned_bonus_df = _fetch_earned_bonus_df(start, end)
+        st.session_state.earned_bonus_range_key = range_key
+    return st.session_state.earned_bonus_df
