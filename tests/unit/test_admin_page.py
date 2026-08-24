@@ -7,12 +7,12 @@ from pytest_mock import MockerFixture
 
 sys.modules.setdefault("streamlit_option_menu", MagicMock())
 
-from m8_team.components.adminPage import get_user_bonus  # noqa: E402
+from m8_team.components.admin.data import get_user_bonus  # noqa: E402
 
 
 @pytest.fixture
 def mock_get_value(mocker: MockerFixture) -> MagicMock:
-    return mocker.patch("m8_team.components.adminPage.get_value")
+    return mocker.patch("m8_team.components.admin.data.get_value")
 
 
 def test_returns_int_directly(mock_get_value: MagicMock) -> None:
@@ -29,7 +29,7 @@ def test_invalid_string_logs_error_and_returns_none(
     mock_get_value: MagicMock, caplog: pytest.LogCaptureFixture
 ) -> None:
     mock_get_value.return_value = "not_a_number"
-    with caplog.at_level(logging.ERROR, logger="m8_team.components.adminPage"):
+    with caplog.at_level(logging.ERROR, logger="m8_team.components.admin.data"):
         result = get_user_bonus("user1")
     assert result is None
     assert "Couldn't convert 'user_bonus' to int" in caplog.text
@@ -39,7 +39,7 @@ def test_unsupported_type_logs_error_and_returns_none(
     mock_get_value: MagicMock, caplog: pytest.LogCaptureFixture
 ) -> None:
     mock_get_value.return_value = {"some": "dict"}
-    with caplog.at_level(logging.ERROR, logger="m8_team.components.adminPage"):
+    with caplog.at_level(logging.ERROR, logger="m8_team.components.admin.data"):
         result = get_user_bonus("user1")
     assert result is None
     assert "unsupported type" in caplog.text
@@ -49,7 +49,7 @@ def test_none_value_logs_error_and_returns_none(
     mock_get_value: MagicMock, caplog: pytest.LogCaptureFixture
 ) -> None:
     mock_get_value.return_value = None
-    with caplog.at_level(logging.ERROR, logger="m8_team.components.adminPage"):
+    with caplog.at_level(logging.ERROR, logger="m8_team.components.admin.data"):
         result = get_user_bonus("user1")
     assert result is None
     assert "unsupported type" in caplog.text

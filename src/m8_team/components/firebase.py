@@ -244,6 +244,31 @@ def get_user_challenges(user_id: str, challenge_status: str) -> Iterator[Documen
         return iter([])
 
 
+def get_earned_bonus_in_range(start: date, end: date) -> Iterator[DocumentSnapshot]:
+    """ "charge bonus" transactions with date in [start, end] (inclusive), queried server-side
+    so callers never pull the whole (unbounded, ever-growing) user_bonus collection to filter
+    it client-side. `date` is stored as an ISO-8601 string, and a plain "YYYY-MM-DD" bound
+    compares correctly against it because a shorter string that's a prefix of a longer one
+    sorts before it lexicographically - no need to reach for full timestamp bounds."""
+    logger.info(f"Retrieving 'charge bonus' transactions between {start} and {end}")
+    try:
+        filter_list = [
+            FieldFilter("transaction_type", "==", "charge bonus"),
+            FieldFilter("date", ">=", start.strftime("%Y-%m-%d")),
+            FieldFilter("date", "<", (end + timedelta(days=1)).strftime("%Y-%m-%d")),
+        ]
+        docs = cast(
+            StreamGenerator[DocumentSnapshot],
+            db.collection("user_bonus")
+            .where(filter=BaseCompositeFilter("AND", filter_list))  # type: ignore[arg-type]
+            .stream(),
+        )
+        return docs
+    except Exception as e:
+        logger.error(e)
+        return iter([])
+
+
 def get_user_rewards(user_id: str) -> Iterator[DocumentSnapshot]:
     logger.info(f"Retrieving rewards of {user_id}")
     if user_id != "all":
