@@ -41,6 +41,7 @@ jobs:
           username: ${{ secrets.TIMEWEB_USER }}
           key: ${{ secrets.TIMEWEB_SSH_KEY }}
           script: |
+            set -e
             echo "${{ secrets.GHCR_PAT }}" | docker login ghcr.io -u ${{ github.repository_owner }} --password-stdin
             docker pull ghcr.io/${{ github.repository_owner }}/m8_team:nop
             docker stop m8-nop || true
@@ -52,3 +53,4 @@ jobs:
               --env-file /opt/m8/nop.env \
               -v /opt/m8/stg-firebase.json:/app/src/credentials/m8-team-stg-firebase.json:ro \
               ghcr.io/${{ github.repository_owner }}/m8_team:nop
+            docker image prune -f
