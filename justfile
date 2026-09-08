@@ -8,7 +8,7 @@ install: && _init_precommit
 
 # start app
 run:
-    APP_ENV=dev uv run streamlit run src/m8_team/main.py
+    APP_ENV=dev uv run streamlit run src/m8_team/app.py
 
 # lint (fast check)
 check:

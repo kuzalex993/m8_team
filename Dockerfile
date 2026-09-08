@@ -14,7 +14,7 @@ ENV PYTHONPATH=/app/src
 EXPOSE 8080
 
 ENTRYPOINT ["sh", "src/entrypoint.sh"]
-CMD ["streamlit", "run", "src/m8_team/main.py", \
+CMD ["streamlit", "run", "src/m8_team/app.py", \
      "--server.port=8080", \
      "--server.address=0.0.0.0", \
      "--server.headless=true", \
