@@ -44,12 +44,18 @@ just test       # pytest
 ## Project layout
 
 ```
-src/m8_team/       app code (Streamlit pages, components, Firebase integration)
-src/credentials/   Firebase service account keys (gitignored)
-scripts/           one-off admin scripts, not part of the app/CI (see scripts/README.md)
-tests/             test suite
-DEPLOYMENT.md       deployment pipeline & one-time server setup
+src/m8_team/app.py     Streamlit entrypoint
+src/m8_team/backend/   transport-agnostic: domain, repositories, services, notifications
+                       (no streamlit imports)
+src/m8_team/ui/        Streamlit UI: admin + user pages, calls backend/services
+src/credentials/       Firebase service account keys (gitignored)
+scripts/               one-off admin scripts, not part of the app/CI (see scripts/README.md)
+tests/                 backend/{domain,services,repositories} + architecture guard
+DEPLOYMENT.md          deployment pipeline & one-time server setup
 ```
+
+The dependency rule: `ui/` imports `backend/`, never the reverse; nothing under `backend/`
+imports `streamlit`. `tests/architecture/test_layering.py` enforces it.
 
 ## Deployment
 
