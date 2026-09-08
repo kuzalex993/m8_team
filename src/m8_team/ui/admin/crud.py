@@ -1,24 +1,15 @@
-"""Shared scaffolding for the "add new item" / "edit existing item" expanders used by the
-Задания and Награды tabs. Both tabs previously duplicated the same
-expander -> form -> submit -> success/error-toast flow almost verbatim; this module keeps
-that flow in one place while leaving the entity-specific fields to the caller.
+"""Shared 'add item' / 'edit item' expander scaffolding for the Задания and Награды tabs
+(was ``components/admin/crud.py``). Pure Streamlit; the ``on_submit`` callback is expected
+to call :func:`m8_team.ui.common.feedback.mark_ok` / ``mark_failed``.
 """
+
+from __future__ import annotations
 
 from collections.abc import Callable
 
 import streamlit as st
 
-
-def show_submit_feedback(submitted: bool, success_message: str, error_message: str) -> None:
-    """Render the success/error toast for a form submitted via an on_click callback that
-    sets st.session_state.transaction_status, then reset the flag."""
-    if not submitted:
-        return
-    if st.session_state.transaction_status:
-        st.success(success_message)
-        st.session_state.transaction_status = False
-    else:
-        st.error(error_message)
+from m8_team.ui.common.feedback import show_result
 
 
 def render_add_expander(
@@ -37,7 +28,7 @@ def render_add_expander(
         submitted = st.form_submit_button(
             label=submit_label, on_click=on_submit, use_container_width=True, type="primary"
         )
-        show_submit_feedback(submitted, success_message, error_message)
+        show_result(submitted, success_message, error_message)
 
 
 def render_edit_expander(
@@ -71,4 +62,4 @@ def render_edit_expander(
                 use_container_width=True,
                 type="primary",
             )
-            show_submit_feedback(submitted, success_message, error_message)
+            show_result(submitted, success_message, error_message)

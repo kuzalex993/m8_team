@@ -1,16 +1,19 @@
-"""'Сотрудники' tab: pick an employee, then adjust their bonus balance or assign them a
-challenge. The two sub-tabs each get their own render function below."""
+"""'Сотрудники' tab (was ``components/admin/employees_tab.py``): pick an employee, then
+adjust their balance or assign a challenge. All writes go through ``bonus`` / ``challenge``
+services.
+"""
 
-from datetime import date, datetime, timedelta
+from __future__ import annotations
+
+from datetime import date, timedelta
 from typing import cast
 
 import streamlit as st
 
-from m8_team.components.firebase import put_into_user_challenge_collection, update_user_bonus_atomic
-
-from . import data
-from .constants import TRANSACTION_TYPE_MAP
-from .notify import notify_user
+from m8_team.backend.domain.errors import DomainError, InsufficientBalance
+from m8_team.ui.common import cache, feedback
+from m8_team.ui.common.labels import OPERATION_LABELS
+from m8_team.ui.container import get_container
 
 
 def new_user_selected() -> None:
@@ -18,66 +21,42 @@ def new_user_selected() -> None:
         selected_user_id = st.session_state["users_data_map"][
             st.session_state["selected_user_name"]
         ]
-        st.session_state["current_user_balance"] = data.get_user_bonus(selected_user_id)
-
-
-def _is_balance_sufficient(delta: int) -> bool:
-    return cast(int, st.session_state["current_user_balance"]) >= delta
+        st.session_state["current_user_balance"] = get_container().user.free_bonuses(
+            selected_user_id
+        )
 
 
 def update_user_bonus(user_id: str) -> None:
-    additional_bonus = st.session_state.additional_bonus_widget
-    transaction_type = TRANSACTION_TYPE_MAP[st.session_state.operation_widget]
-    if transaction_type == "write off bonus":
-        if not _is_balance_sufficient(additional_bonus):
-            st.session_state.insufficient_balance_error = True
-            return
-        additional_bonus *= -1
-    if update_user_bonus_atomic(
-        user_id=user_id,
-        transaction_type=transaction_type,
-        bonus_value=additional_bonus,
-        event_type="admin",
-        event_id=None,
-    ):
-        if additional_bonus > 0:
-            notify_user(
-                message=f"Администратор добавил вам {additional_bonus} бонусов",
-                user_name=user_id,
-            )
-        elif additional_bonus < 0:
-            notify_user(
-                message=f"Администратор уменьшил ваш баланс на {additional_bonus} бонусов",
-                user_name=user_id,
-            )
-        st.session_state.transaction_status = True
+    amount = int(st.session_state.additional_bonus_widget)
+    transaction_type = OPERATION_LABELS[st.session_state.operation_widget]
+    try:
+        get_container().bonus.admin_adjust(
+            user_id=user_id, amount=amount, transaction_type=transaction_type
+        )
+        feedback.mark_ok()
         st.session_state.additional_bonus_widget = 0
-    st.session_state.current_user_balance = data.get_user_bonus(user_id)
+    except InsufficientBalance:
+        st.session_state.insufficient_balance_error = True
+    except DomainError:
+        feedback.mark_failed()
+    st.session_state.current_user_balance = get_container().user.free_bonuses(user_id)
 
 
 def add_new_user_challenge(challenge_id: int, challenge_duration: int) -> None:
     if not st.session_state.selected_user_name:
         return
     selected_user_id = st.session_state.users_data_map[st.session_state.selected_user_name]
-    status = put_into_user_challenge_collection(
+    ok = get_container().challenge.assign(
         user_id=selected_user_id,
         user_name=st.session_state.selected_user_name,
         challenge_id=challenge_id,
-        challenge_descripion=st.session_state.challenge_to_assign_description_widget,
+        description=st.session_state.challenge_to_assign_description_widget,
         start_date=st.session_state.challenge_to_assign_start_date_widget,
-        challenge_duration=challenge_duration,
-        challenge_creation_date=datetime.now().strftime("%Y-%m-%dT%H:%M:%S.%fZ"),
+        duration=challenge_duration,
     )
-    if status:
-        notify_user(
-            message=f"""Вам назначено новое задание:\n
-            Описание: {st.session_state.challenge_to_assign_description_widget}\n
-            Дата начала: {st.session_state.challenge_to_assign_start_date_widget}\n
-            Время на выполнение: {challenge_duration} дней""",
-            user_name=selected_user_id,
-        )
-        st.session_state.transaction_status = True
-        st.session_state.user_challenge_df = data.get_user_challenge_df(force_refresh=True)
+    feedback.mark_ok() if ok else feedback.mark_failed()
+    if ok:
+        cache.user_challenge_df(force_refresh=True)
 
 
 def _render_bonus_management_tab(selected_user_id: str, selected_user_name: str) -> None:
@@ -124,15 +103,16 @@ def _render_bonus_management_tab(selected_user_id: str, selected_user_name: str)
                 if st.session_state.insufficient_balance_error:
                     st.warning("Недостаточно бонусов для списания")
                     st.session_state.insufficient_balance_error = False
-                elif st.session_state.transaction_status:
-                    st.success(f"Баланс пользователя {selected_user_name} обновлен")
-                    st.session_state.transaction_status = False
                 else:
-                    st.error("Не удалось обновить баланс")
+                    feedback.show_result(
+                        True,
+                        f"Баланс пользователя {selected_user_name} обновлен",
+                        "Не удалось обновить баланс",
+                    )
 
 
 def _render_challenge_assignment_tab(selected_user_name: str) -> None:
-    challenge_df = data.get_challenges_df()
+    challenge_df = cache.challenges_df()
     challenges_list = challenge_df["challenge_description"].tolist()
     col1, col2, col3, col4 = st.columns([3, 1, 1, 1])
     selected_challenge = None
@@ -175,19 +155,15 @@ def _render_challenge_assignment_tab(selected_user_name: str) -> None:
             on_click=add_new_user_challenge,
             args=(challenge_id, challenge_duration),
         )
-        if assign_challenge_btn:
-            if st.session_state.transaction_status:
-                st.success(
-                    f"""Задание **{challenge_to_assign}**
-                    назначено пользователю **{selected_user_name}**"""
-                )
-                st.session_state.transaction_status = False
-            else:
-                st.error("Не удалось назначить задание")
+        feedback.show_result(
+            assign_challenge_btn,
+            f"Задание **{challenge_to_assign}** назначено пользователю **{selected_user_name}**",
+            "Не удалось назначить задание",
+        )
 
     st.divider()
     with st.container():
-        user_challenge_df = data.get_user_challenge_df()
+        user_challenge_df = cache.user_challenge_df()
         current_user_challenge_df = user_challenge_df.loc[
             (user_challenge_df["user_name"] == selected_user_name)
             & (user_challenge_df["challenge_status"] != "complete")
@@ -230,7 +206,7 @@ def _render_challenge_assignment_tab(selected_user_name: str) -> None:
 
 def render_employees_tab() -> None:
     st.subheader("Сотрудники")
-    users_map = data.get_users_map(force_refresh=True)
+    users_map = cache.users_map(force_refresh=True)
     users_list = list(users_map.keys())
     selected_user_name = st.selectbox(
         label="Cотрудник",

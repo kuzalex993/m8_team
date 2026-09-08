@@ -1,73 +1,30 @@
-"""'Запросы' tab: confirm pending reward requests and list the already-decided ones."""
+"""'Запросы' tab (was ``components/admin/requests_tab.py``): confirm pending reward requests
+and list the decided ones.
+"""
 
-import logging
+from __future__ import annotations
+
 from datetime import datetime
 from typing import Any
 
 import pandas as pd
 import streamlit as st
 
-from m8_team.components.firebase import (
-    add_new_document,
-    get_user_rewards,
-    get_value,
-    update_document,
-)
-from m8_team.components.models import UserReward
-
-from .constants import (
-    REWARDS_COLLECTION,
-    USER_BONUS_COLLECTION,
-    USER_REWARD_COLLECTION,
-    USERS_COLLECTION,
-)
-from .crud import show_submit_feedback
-from .notify import notify_user
-
-logger = logging.getLogger(__name__)
+from m8_team.backend.domain.enums import RewardStatus
+from m8_team.backend.domain.errors import DomainError
+from m8_team.backend.domain.models import UserReward
+from m8_team.ui.common import feedback
+from m8_team.ui.container import get_container
 
 
 def confirm_user_request(user_reward_id: str, user_id: str, reward_id: str) -> None:
-    st.session_state.transaction_status = False
-    reward_price = get_value(
-        collection_name=REWARDS_COLLECTION, document_name=reward_id, field_name="reward_price"
-    )
-    reward_description = get_value(
-        collection_name=REWARDS_COLLECTION, document_name=reward_id, field_name="reward_description"
-    )
-    user_reserved_bonus = get_value(
-        collection_name=USERS_COLLECTION, document_name=user_id, field_name="user_reserved_bonuses"
-    )
-    if reward_price > user_reserved_bonus:
-        logger.error("Error! Lack of reserved bonuses")
-        return
-
-    updated_user_data = {"user_reserved_bonuses": user_reserved_bonus - reward_price}
-    update_document(
-        collection_name=USERS_COLLECTION, document_id=user_id, document_data=updated_user_data
-    )
-
-    updated_user_reward_data = {
-        "user_reward_status": "completed",
-        "user_reward_decision_date": datetime.now().strftime("%Y-%m-%dT%H:%M:%S.%fZ"),
-    }
-    update_document(
-        collection_name=USER_REWARD_COLLECTION,
-        document_id=user_reward_id,
-        document_data=updated_user_reward_data,
-    )
-
-    new_user_bonus_record = {
-        "user_id": user_id,
-        "transaction_type": "debiting bonus",
-        "event_type": "user_reward",
-        "event_id": user_reward_id,
-        "date": datetime.now().strftime("%Y-%m-%dT%H:%M:%S.%fZ"),
-        "bonus_value": reward_price,
-    }
-    add_new_document(collection_name=USER_BONUS_COLLECTION, document_data=new_user_bonus_record)
-    notify_user(message=f"Ура! Админ подтвердил награду: {reward_description}", user_name=user_id)
-    st.session_state.transaction_status = True
+    try:
+        get_container().reward.confirm(
+            user_reward_id=user_reward_id, user_id=user_id, reward_id=reward_id
+        )
+        feedback.mark_ok()
+    except DomainError:
+        feedback.mark_failed()
 
 
 def _render_pending_request(user_reward: UserReward) -> None:
@@ -91,7 +48,7 @@ def _render_pending_request(user_reward: UserReward) -> None:
                 on_click=confirm_user_request,
                 args=(user_reward.id, user_reward.user_id, user_reward.reward_id),
             )
-        show_submit_feedback(
+        feedback.show_result(
             submitted,
             success_message=f"Награда «{user_reward.reward_description}» подтверждена",
             error_message="Не удалось подтвердить: недостаточно зарезервированных бонусов",
@@ -99,7 +56,6 @@ def _render_pending_request(user_reward: UserReward) -> None:
 
 
 def render_requests_tab() -> None:
-    user_rewards = get_user_rewards(user_id="all")
     completed_rewards_to_df: dict[str, list[Any]] = {
         "name": [],
         "description": [],
@@ -110,12 +66,8 @@ def render_requests_tab() -> None:
     show_info_flag = True
     info_messages = ["Ого! Кажется, пока тут пусто...", "И тут тоже пусто..."]
 
-    for doc in user_rewards:
-        doc_data = doc.to_dict()
-        if doc_data is None:
-            continue
-        user_reward = UserReward.from_dict(doc_data, doc.id)
-        if user_reward.user_reward_status == "new":
+    for user_reward in get_container().reward.requests("all"):
+        if user_reward.user_reward_status == RewardStatus.NEW:
             show_info_flag = False
             _render_pending_request(user_reward)
         else:

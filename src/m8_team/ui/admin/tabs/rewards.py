@@ -1,39 +1,31 @@
-"""'Награды' tab: add/edit rewards and browse the full reward list. Mirrors tasks_tab.py's
-structure - same crud.py flow, different fields and Firestore collection."""
+"""'Награды' tab (was ``components/admin/rewards_tab.py``). Mirrors ``tasks.py``."""
 
-from datetime import datetime
+from __future__ import annotations
 
 import streamlit as st
 
-from m8_team.components.firebase import add_new_document, update_document
-
-from . import data
-from .constants import REWARDS_COLLECTION
-from .crud import render_add_expander, render_edit_expander
+from m8_team.ui.admin.crud import render_add_expander, render_edit_expander
+from m8_team.ui.common import cache, feedback
+from m8_team.ui.container import get_container
 
 
 def add_new_reward() -> None:
-    new_reward = {
-        "reward_description": st.session_state.reward_description_widget,
-        "reward_price": st.session_state.reward_price_widget,
-        "reward_last_update": datetime.utcnow().strftime("%Y-%m-%dT%H:%M:%S.%fZ"),
-    }
-    if add_new_document(collection_name=REWARDS_COLLECTION, document_data=new_reward):
-        st.session_state.transaction_status = True
-    data.get_rewards_df(force_refresh=True)
+    ok = get_container().reward.add_to_catalogue(
+        description=st.session_state.reward_description_widget,
+        price=st.session_state.reward_price_widget,
+    )
+    feedback.mark_ok() if ok else feedback.mark_failed()
+    cache.rewards_df(force_refresh=True)
 
 
 def update_reward(reward_id: str) -> None:
-    edited_reward = {
-        "reward_description": st.session_state.edit_reward_description_widget,
-        "reward_price": st.session_state.edit_reward_price_widget,
-        "reward_last_update": datetime.utcnow().strftime("%Y-%m-%dT%H:%M:%S.%fZ"),
-    }
-    if update_document(
-        collection_name=REWARDS_COLLECTION, document_id=reward_id, document_data=edited_reward
-    ):
-        st.session_state.transaction_status = True
-    data.get_rewards_df(force_refresh=True)
+    ok = get_container().reward.update_catalogue_item(
+        reward_id,
+        description=st.session_state.edit_reward_description_widget,
+        price=st.session_state.edit_reward_price_widget,
+    )
+    feedback.mark_ok() if ok else feedback.mark_failed()
+    cache.rewards_df(force_refresh=True)
 
 
 def _render_add_reward_fields() -> None:
@@ -57,7 +49,7 @@ def _render_add_reward_fields() -> None:
 
 
 def _render_edit_reward_fields(reward_to_edit: str | None) -> str | None:
-    rewards_df = data.get_rewards_df()
+    rewards_df = cache.rewards_df()
     reward_id = None
     col1, col2 = st.columns(2)
     with col1:
@@ -103,7 +95,7 @@ def render_rewards_tab() -> None:
         error_message="Не удалось создать новую награду",
     )
 
-    rewards_df = data.get_rewards_df()
+    rewards_df = cache.rewards_df()
     rewards_list = rewards_df["reward_description"].tolist()
     render_edit_expander(
         title="Редактирование награды :pencil2:",
@@ -121,7 +113,7 @@ def render_rewards_tab() -> None:
 
     with st.expander(label="База наград :books:"):
         st.dataframe(
-            data.get_rewards_df(),
+            cache.rewards_df(),
             use_container_width=False,
             column_order=("reward_description", "reward_price", "reward_last_update"),
             column_config={

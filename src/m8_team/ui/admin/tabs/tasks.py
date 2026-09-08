@@ -1,43 +1,35 @@
-"""'Задания' tab: add/edit challenges and browse the full challenge list. Add/edit UI flow
-is built on crud.py; only the field layout and Firestore writes are specific to this tab."""
+"""'Задания' tab (was ``components/admin/tasks_tab.py``). Field layout is UI; all writes go
+through ``challenge`` service.
+"""
 
-from datetime import datetime
+from __future__ import annotations
 
 import streamlit as st
 
-from m8_team.components.firebase import add_new_document, update_document
-
-from . import data
-from .constants import CHALLENGES_COLLECTION
-from .crud import render_add_expander, render_edit_expander
+from m8_team.ui.admin.crud import render_add_expander, render_edit_expander
+from m8_team.ui.common import cache, feedback
+from m8_team.ui.container import get_container
 
 
 def add_new_challenge() -> None:
-    new_task = {
-        "challenge_description": st.session_state.task_description_widget,
-        "challenge_reward": st.session_state.task_award_widget,
-        "challenge_planned_time_completion": st.session_state.task_planned_time_widget,
-        "challenge_active": True,
-        "challenge_date_update": datetime.utcnow().strftime("%Y-%m-%dT%H:%M:%S.%fZ"),
-    }
-    if add_new_document(collection_name=CHALLENGES_COLLECTION, document_data=new_task):
-        st.session_state.transaction_status = True
-    data.get_challenges_df(force_refresh=True)
+    ok = get_container().challenge.add_to_catalogue(
+        description=st.session_state.task_description_widget,
+        reward=st.session_state.task_award_widget,
+        planned_time=st.session_state.task_planned_time_widget,
+    )
+    feedback.mark_ok() if ok else feedback.mark_failed()
+    cache.challenges_df(force_refresh=True)
 
 
 def update_challenge(challenge_id: str) -> None:
-    edited_task = {
-        "challenge_description": st.session_state.edit_challenge_description_widget,
-        "challenge_reward": st.session_state.edit_challenge_reward_widget,
-        "challenge_planned_time_completion": st.session_state.edit_challenge_planned_time_widget,
-        "challenge_active": True,
-        "challenge_date_update": datetime.utcnow().strftime("%Y-%m-%dT%H:%M:%S.%fZ"),
-    }
-    if update_document(
-        collection_name=CHALLENGES_COLLECTION, document_id=challenge_id, document_data=edited_task
-    ):
-        st.session_state.transaction_status = True
-    data.get_challenges_df(force_refresh=True)
+    ok = get_container().challenge.update_catalogue_item(
+        challenge_id,
+        description=st.session_state.edit_challenge_description_widget,
+        reward=st.session_state.edit_challenge_reward_widget,
+        planned_time=st.session_state.edit_challenge_planned_time_widget,
+    )
+    feedback.mark_ok() if ok else feedback.mark_failed()
+    cache.challenges_df(force_refresh=True)
 
 
 def _render_add_challenge_fields() -> None:
@@ -70,7 +62,7 @@ def _render_add_challenge_fields() -> None:
 
 
 def _render_edit_challenge_fields(task_to_edit: str | None) -> str | None:
-    challenges_df = data.get_challenges_df()
+    challenges_df = cache.challenges_df()
     challenge_id = None
     col1, col2 = st.columns(2)
     with col1:
@@ -129,7 +121,7 @@ def render_tasks_tab() -> None:
         error_message="Не удалось создать новое задание",
     )
 
-    challenges_df = data.get_challenges_df()
+    challenges_df = cache.challenges_df()
     challenges_list = challenges_df["challenge_description"].tolist()
     render_edit_expander(
         title="Редактирование задания :pencil2:",
@@ -147,7 +139,7 @@ def render_tasks_tab() -> None:
 
     with st.expander(label="База заданий :books:"):
         st.dataframe(
-            data.get_challenges_df(),
+            cache.challenges_df(),
             use_container_width=False,
             column_order=(
                 "challenge_description",

@@ -1,16 +1,19 @@
-"""Entry point for the admin page: renders the sidebar menu and dispatches to the selected
-tab's render function. Add a new tab by extending MENU_ITEMS and _TAB_RENDERERS."""
+"""Admin page dispatcher (was ``components/admin/page.py``). Add a tab by extending
+``MENU_ITEMS`` and ``_TAB_RENDERERS``.
+"""
+
+from __future__ import annotations
 
 import streamlit as st
 from streamlit_option_menu import option_menu
 
-from .constants import MENU_ITEMS
-from .employees_tab import render_employees_tab
-from .requests_tab import render_requests_tab
-from .rewards_tab import render_rewards_tab
-from .state import ensure_session_state
-from .stats_tab import render_stats_tab
-from .tasks_tab import render_tasks_tab
+from m8_team.ui.admin.menu import MENU_ITEMS
+from m8_team.ui.admin.state import ensure_session_state
+from m8_team.ui.admin.tabs.employees import render_employees_tab
+from m8_team.ui.admin.tabs.requests import render_requests_tab
+from m8_team.ui.admin.tabs.rewards import render_rewards_tab
+from m8_team.ui.admin.tabs.stats import render_stats_tab
+from m8_team.ui.admin.tabs.tasks import render_tasks_tab
 
 _TAB_RENDERERS = {
     "Сотрудники": render_employees_tab,
