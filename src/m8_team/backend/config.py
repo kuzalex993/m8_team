@@ -12,8 +12,10 @@ from pathlib import Path
 
 from dotenv import load_dotenv
 
-# src/m8_team/backend/config.py -> src/m8_team
-_PACKAGE_ROOT = Path(__file__).resolve().parents[1]
+# src/m8_team/backend/config.py -> src/
+# The Firebase key lives under src/credentials/ (see entrypoint.sh, Dockerfile,
+# DEPLOYMENT.md); it is *not* inside the m8_team package.
+_SRC_ROOT = Path(__file__).resolve().parents[2]
 
 _FIREBASE_CRED_FILENAMES = {
     "dev": "m8-team-dev-firebase.json",
@@ -36,7 +38,7 @@ class Config:
         cred_filename = _FIREBASE_CRED_FILENAMES.get(env, _FIREBASE_CRED_FILENAMES["dev"])
         return cls(
             env=env,
-            firebase_cred_path=_PACKAGE_ROOT / "credentials" / cred_filename,
+            firebase_cred_path=_SRC_ROOT / "credentials" / cred_filename,
             bot_token=os.getenv("BOT_TOKEN"),
             bot_endpoint=os.getenv("T_BOT_ENDPOINT"),
         )
