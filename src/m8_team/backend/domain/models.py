@@ -1,3 +1,11 @@
+"""Dataclass mirrors of the Firestore documents.
+
+Moved from ``m8_team.components.models``. ``from_dict`` / ``to_dict`` are the wire boundary:
+they translate between Firestore field names and domain attribute names. The historical
+Firestore misspelling ``challenge_descripion`` is mapped to ``description`` here and never
+leaks past this module.
+"""
+
 from __future__ import annotations
 
 from dataclasses import asdict, dataclass, field
@@ -87,7 +95,7 @@ class UserChallenge:
     user_id: str
     user_name: str
     challenge_id: int
-    challenge_descripion: str  # typo preserved to match Firestore field name
+    description: str
     start_date: str
     planned_finish_date: str
     challenge_status: str
@@ -99,6 +107,8 @@ class UserChallenge:
     def to_dict(self) -> dict[str, Any]:
         d = asdict(self)
         d.pop("id")
+        # Firestore stores the misspelled field name; the domain attribute is `description`.
+        d["challenge_descripion"] = d.pop("description")
         return d
 
     @classmethod
@@ -107,7 +117,7 @@ class UserChallenge:
             user_id=d["user_id"],
             user_name=d["user_name"],
             challenge_id=d["challenge_id"],
-            challenge_descripion=d["challenge_descripion"],
+            description=d.get("description", d.get("challenge_descripion", "")),
             start_date=d["start_date"],
             planned_finish_date=d["planned_finish_date"],
             challenge_status=d["challenge_status"],
