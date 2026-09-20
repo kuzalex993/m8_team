@@ -41,8 +41,35 @@ def _render_bonus_range_picker() -> tuple[date, date] | None:
     return start_date, end_date
 
 
-def render_stats_tab() -> None:
+def _render_bonuses_section(*, include_inactive: bool) -> None:
     stats = get_container().stats
+    st.markdown("#### Заработанные бонусы по сотрудникам")
+    selected_range = _render_bonus_range_picker()
+    if selected_range is None:
+        return
+    start_date, end_date = selected_range
+    bonus_totals = stats.bonuses_earned_by_user(
+        cache.earned_bonus_rows(start_date, end_date), include_inactive=include_inactive
+    )
+    if bonus_totals.empty:
+        st.info("За выбранный период никто не заработал бонусов.")
+    else:
+        st.bar_chart(bonus_totals)
+
+
+def _render_finished_challenges_section(*, include_inactive: bool) -> None:
+    stats = get_container().stats
+    st.markdown("#### Выполненные задания по сотрудникам")
+    finished_challenges_df = stats.finished_challenges_by_user(
+        cache.user_challenge_df(), include_inactive=include_inactive
+    )
+    if finished_challenges_df.empty:
+        st.info("Пока никто не завершил ни одного задания.")
+    else:
+        st.bar_chart(finished_challenges_df, color=["#2ecc71", "#e74c3c"])
+
+
+def render_stats_tab() -> None:
     st.subheader("Статистика")
     include_inactive = st.toggle(
         "Показать бывших сотрудников",
@@ -53,24 +80,6 @@ def render_stats_tab() -> None:
         ),
     )
 
-    st.markdown("#### Выполненные задания по сотрудникам")
-    finished_challenges_df = stats.finished_challenges_by_user(
-        cache.user_challenge_df(), include_inactive=include_inactive
-    )
-    if finished_challenges_df.empty:
-        st.info("Пока никто не завершил ни одного задания.")
-    else:
-        st.bar_chart(finished_challenges_df, color=["#2ecc71", "#e74c3c"])
-
+    _render_bonuses_section(include_inactive=include_inactive)
     st.divider()
-    st.markdown("#### Заработанные бонусы по сотрудникам")
-    selected_range = _render_bonus_range_picker()
-    if selected_range is not None:
-        start_date, end_date = selected_range
-        bonus_totals = stats.bonuses_earned_by_user(
-            cache.earned_bonus_rows(start_date, end_date), include_inactive=include_inactive
-        )
-        if bonus_totals.empty:
-            st.info("За выбранный период никто не заработал бонусов.")
-        else:
-            st.bar_chart(bonus_totals)
+    _render_finished_challenges_section(include_inactive=include_inactive)
