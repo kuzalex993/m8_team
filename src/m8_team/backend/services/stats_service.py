@@ -35,6 +35,21 @@ class StatsService:
         self._ledger = ledger
         self._users = users
 
+    def _counted_mask(self, user_ids: pd.Series, include_inactive: bool) -> pd.Series:
+        """Which rows count towards the stats, by ``user_id``.
+
+        By default only current team members count: the ``users`` doc exists and is
+        active. Everyone else is a former employee - including ids that only survive in
+        ``user_challenge`` / ``user_bonus`` because their ``users`` doc was deleted.
+        With ``include_inactive`` former employees are counted too; service accounts
+        (``EXCLUDED_EMPLOYEE_IDS``) never are.
+        """
+        counted = ~user_ids.isin(EXCLUDED_EMPLOYEE_IDS)
+        if include_inactive:
+            return counted
+        active_ids = {uid for _, uid, active in self._users.employee_directory() if active}
+        return counted & user_ids.isin(active_ids)
+
     def earned_bonus_rows(self, start: date, end: date) -> list[dict[str, Any]]:
         rows: list[dict[str, Any]] = []
         for doc in self._ledger.earned_in_range(start, end):
@@ -44,13 +59,15 @@ class StatsService:
             rows.append({**data, "id": doc.id})
         return rows
 
-    def finished_challenges_by_user(self, user_challenge_df: pd.DataFrame) -> pd.DataFrame:
+    def finished_challenges_by_user(
+        self, user_challenge_df: pd.DataFrame, *, include_inactive: bool = False
+    ) -> pd.DataFrame:
         if user_challenge_df.empty:
             return pd.DataFrame()
 
         finished = user_challenge_df[
             (user_challenge_df["challenge_status"] == ChallengeStatus.FINISHED)
-            & (~user_challenge_df["user_id"].isin(EXCLUDED_EMPLOYEE_IDS))
+            & self._counted_mask(user_challenge_df["user_id"], include_inactive)
         ]
         if finished.empty:
             return pd.DataFrame()
@@ -68,12 +85,14 @@ class StatsService:
         counts["_total"] = counts.sum(axis=1)
         return counts.sort_values("_total", ascending=False).drop(columns="_total")
 
-    def bonuses_earned_by_user(self, earned_bonus_rows: list[dict[str, Any]]) -> pd.Series:
+    def bonuses_earned_by_user(
+        self, earned_bonus_rows: list[dict[str, Any]], *, include_inactive: bool = False
+    ) -> pd.Series:
         df = pd.DataFrame(earned_bonus_rows)
         if df.empty:
             return pd.Series(dtype="int64")
 
-        earned = df[~df["user_id"].isin(EXCLUDED_EMPLOYEE_IDS)]
+        earned = df[self._counted_mask(df["user_id"], include_inactive)]
         if earned.empty:
             return pd.Series(dtype="int64")
 

@@ -37,9 +37,19 @@ def _render_bonus_range_picker() -> tuple[date, date] | None:
 def render_stats_tab() -> None:
     stats = get_container().stats
     st.subheader("Статистика")
+    include_inactive = st.toggle(
+        "Показать бывших сотрудников",
+        key="stats_include_former",
+        help=(
+            "По умолчанию в статистике только сотрудники, которые работают в команде. "
+            "Бывшие — отключённые в карточке сотрудника и те, чей профиль удалён."
+        ),
+    )
 
     st.markdown("#### Выполненные задания по сотрудникам")
-    finished_challenges_df = stats.finished_challenges_by_user(cache.user_challenge_df())
+    finished_challenges_df = stats.finished_challenges_by_user(
+        cache.user_challenge_df(), include_inactive=include_inactive
+    )
     if finished_challenges_df.empty:
         st.info("Пока никто не завершил ни одного задания.")
     else:
@@ -50,7 +60,9 @@ def render_stats_tab() -> None:
     selected_range = _render_bonus_range_picker()
     if selected_range is not None:
         start_date, end_date = selected_range
-        bonus_totals = stats.bonuses_earned_by_user(cache.earned_bonus_rows(start_date, end_date))
+        bonus_totals = stats.bonuses_earned_by_user(
+            cache.earned_bonus_rows(start_date, end_date), include_inactive=include_inactive
+        )
         if bonus_totals.empty:
             st.info("За выбранный период никто не заработал бонусов.")
         else:
