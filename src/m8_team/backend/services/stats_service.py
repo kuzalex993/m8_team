@@ -14,7 +14,7 @@ from typing import Any
 import pandas as pd
 
 from m8_team.backend.domain.constants import EXCLUDED_EMPLOYEE_IDS
-from m8_team.backend.domain.enums import ChallengeStatus
+from m8_team.backend.domain.enums import ChallengeStatus, EventType
 from m8_team.backend.repositories.bonus_ledger_repo import BonusLedgerRepo
 from m8_team.backend.repositories.user_challenge_repo import UserChallengeRepo
 
@@ -22,6 +22,17 @@ from .user_service import UserService
 
 SUCCESS_COLUMN = "Успешно"
 FAILURE_COLUMN = "Неуспешно"
+
+# Sources of earned bonuses, keyed by the ``event_type`` of the ``user_bonus`` ledger row.
+# Rows with any other ``event_type`` are shown as OTHER_SOURCE_COLUMN (only when present)
+# rather than silently dropped, so the stacked totals always add up.
+CHALLENGE_SOURCE_COLUMN = "За задания"
+ADMIN_SOURCE_COLUMN = "Начислено администратором"
+OTHER_SOURCE_COLUMN = "Другое"
+_SOURCE_COLUMNS = {
+    EventType.USER_CHALLENGE: CHALLENGE_SOURCE_COLUMN,
+    EventType.ADMIN: ADMIN_SOURCE_COLUMN,
+}
 
 
 class StatsService:
@@ -87,17 +98,29 @@ class StatsService:
 
     def bonuses_earned_by_user(
         self, earned_bonus_rows: list[dict[str, Any]], *, include_inactive: bool = False
-    ) -> pd.Series:
+    ) -> pd.DataFrame:
+        """Earned bonuses per employee, one column per source (see ``_SOURCE_COLUMNS``),
+        biggest earners first."""
         df = pd.DataFrame(earned_bonus_rows)
         if df.empty:
-            return pd.Series(dtype="int64")
+            return pd.DataFrame()
 
         earned = df[self._counted_mask(df["user_id"], include_inactive)]
         if earned.empty:
-            return pd.Series(dtype="int64")
+            return pd.DataFrame()
+
+        source = earned["event_type"].map(_SOURCE_COLUMNS).fillna(OTHER_SOURCE_COLUMN)
+        totals = (
+            earned.groupby(["user_id", source])["bonus_value"]
+            .sum()
+            .unstack(fill_value=0)
+            .reindex(columns=[CHALLENGE_SOURCE_COLUMN, ADMIN_SOURCE_COLUMN, OTHER_SOURCE_COLUMN])
+        )
+        totals = totals.fillna(0).astype("int64")
+        if not totals[OTHER_SOURCE_COLUMN].any():
+            totals = totals.drop(columns=OTHER_SOURCE_COLUMN)
 
         id_to_name = {uid: name for name, uid in self._users.employee_map().items()}
-        totals = earned.groupby("user_id")["bonus_value"].sum()
         totals.index = totals.index.map(lambda uid: id_to_name.get(uid, uid))
         totals.index.name = "user_name"
-        return totals.sort_values(ascending=False)
+        return totals.loc[totals.sum(axis=1).sort_values(ascending=False).index]
