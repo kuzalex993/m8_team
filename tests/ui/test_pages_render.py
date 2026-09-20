@@ -154,7 +154,8 @@ def test_stats_bonus_chart_uses_russian_field_names(make_app: Callable[..., AppT
     encoding = spec["encoding"]
     assert [encoding[c]["field"] for c in ("x", "y", "color")] == ["Имя", "Бонусов", "Тип"]
     assert [t["field"] for t in encoding["tooltip"]] == ["Имя", "Бонусов", "Тип"]
-    assert encoding["x"]["title"] == encoding["y"]["title"] == ""  # no axis titles
+    assert encoding["x"]["title"] is None and encoding["y"]["title"] is None  # no axis titles
+    assert "scale" not in encoding["color"]  # default palette; ``scale: null`` would break it
 
 
 def test_stats_challenges_chart_is_stacked_green_and_red_with_russian_names(
@@ -172,6 +173,17 @@ def test_stats_challenges_chart_is_stacked_green_and_red_with_russian_names(
         "Успешно": "#2ecc71",
         "Неуспешно": "#e74c3c",
     }
+
+
+def test_stats_charts_have_their_legend_on_the_right(make_app: Callable[..., AppTest]) -> None:
+    at = make_app(_stats).run()
+
+    assert not at.exception
+    charts = at.get("vega_lite_chart")
+    assert len(charts) == 2
+    for chart in charts:
+        encoding = json.loads(chart.proto.spec)["encoding"]
+        assert encoding["color"]["legend"]["orient"] == "right"
 
 
 def test_stats_period_defaults_to_last_three_months(make_app: Callable[..., AppTest]) -> None:

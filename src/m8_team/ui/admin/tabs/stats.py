@@ -76,26 +76,50 @@ def finished_challenges_long_format(counts: pd.DataFrame) -> pd.DataFrame:
     )
 
 
-def finished_challenges_chart(counts: pd.DataFrame) -> alt.Chart:
-    """Stacked bars per employee, green for successful and red for unsuccessful. Drawn with
-    Altair (not ``st.bar_chart``) to keep those colours *and* Russian names in the tooltip
-    and legend; axis titles are hidden."""
+def stacked_bar_chart(
+    data: pd.DataFrame, *, value: str, category: str, scale: alt.Scale | None = None
+) -> alt.Chart:
+    """Bars per employee (``Имя``) stacked by ``category``, with the legend on the right.
+
+    Drawn with Altair rather than ``st.bar_chart`` because that can't place the legend
+    (it is always at the bottom) or fix series colours next to Russian field names. The
+    field names show in the tooltip and as the legend title; axis titles are hidden.
+    """
     chart: alt.Chart = (
-        alt.Chart(finished_challenges_long_format(counts))
+        alt.Chart(data)
         .mark_bar()
         .encode(
             x=alt.X(f"{NAME_LABEL}:N", title=None),
-            y=alt.Y(f"{CHALLENGES_LABEL}:Q", title=None),
+            y=alt.Y(f"{value}:Q", title=None),
+            # ``scale=None`` would switch scaling off in Vega-Lite (values used as literal
+            # colours); leave it undefined to get the theme's default palette.
             color=alt.Color(
-                f"{RESULT_LABEL}:N",
-                scale=alt.Scale(
-                    domain=[SUCCESS_COLUMN, FAILURE_COLUMN], range=[SUCCESS_COLOR, FAILURE_COLOR]
-                ),
+                f"{category}:N",
+                scale=alt.Undefined if scale is None else scale,
+                legend=alt.Legend(orient="right"),
             ),
-            tooltip=[NAME_LABEL, CHALLENGES_LABEL, RESULT_LABEL],
+            tooltip=[NAME_LABEL, value, category],
         )
     )
     return chart
+
+
+def finished_challenges_chart(counts: pd.DataFrame) -> alt.Chart:
+    """Green for successful, red for unsuccessful challenges."""
+    return stacked_bar_chart(
+        finished_challenges_long_format(counts),
+        value=CHALLENGES_LABEL,
+        category=RESULT_LABEL,
+        scale=alt.Scale(
+            domain=[SUCCESS_COLUMN, FAILURE_COLUMN], range=[SUCCESS_COLOR, FAILURE_COLOR]
+        ),
+    )
+
+
+def bonuses_chart(bonus_totals: pd.DataFrame) -> alt.Chart:
+    return stacked_bar_chart(
+        bonuses_long_format(bonus_totals), value=BONUSES_LABEL, category=SOURCE_LABEL
+    )
 
 
 def _render_bonuses_section(*, include_inactive: bool) -> None:
@@ -111,14 +135,7 @@ def _render_bonuses_section(*, include_inactive: bool) -> None:
     if bonus_totals.empty:
         st.info("За выбранный период никто не заработал бонусов.")
     else:
-        st.bar_chart(
-            bonuses_long_format(bonus_totals),
-            x=NAME_LABEL,
-            y=BONUSES_LABEL,
-            color=SOURCE_LABEL,
-            x_label="",  # the field names are for the tooltip and legend, not axis titles
-            y_label="",
-        )
+        st.altair_chart(bonuses_chart(bonus_totals), width="stretch")
 
 
 def _render_finished_challenges_section(*, include_inactive: bool) -> None:
