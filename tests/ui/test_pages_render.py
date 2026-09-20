@@ -119,7 +119,7 @@ def test_employee_toggle_calls_set_active(make_app: Callable[..., AppTest], cont
     assert any("обновлен" in m.value for m in at.success)
 
 
-def test_former_employees_hidden_until_checkbox_ticked(
+def test_former_employees_hidden_until_toggle_on(
     make_app: Callable[..., AppTest], container: Any
 ) -> None:
     container.user.employee_directory.return_value = [
@@ -129,7 +129,7 @@ def test_former_employees_hidden_until_checkbox_ticked(
     at = make_app(_employees, session=ADMIN_STATE).run()
     assert at.selectbox(key="selected_user_name").options == ["Иван"]
 
-    at.checkbox(key="show_former_employees").check().run()
+    at.toggle(key="show_former_employees").set_value(True).run()
     assert at.selectbox(key="selected_user_name").options == ["Иван", "Пётр"]
 
 
