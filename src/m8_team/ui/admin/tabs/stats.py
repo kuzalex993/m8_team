@@ -58,7 +58,7 @@ def _render_period_picker(key: str) -> tuple[date, date] | None:
 
 def bonuses_long_format(bonus_totals: pd.DataFrame) -> pd.DataFrame:
     """Wide ``user_name x source`` table -> long ``Имя / Тип / Бонусов`` rows, the shape
-    ``st.bar_chart`` needs to stack by ``Тип`` under Russian field names."""
+    the stacked chart needs to stack by ``Тип`` under Russian field names."""
     return (
         bonus_totals.rename_axis(NAME_LABEL)
         .reset_index()
