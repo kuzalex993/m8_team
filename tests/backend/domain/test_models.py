@@ -49,6 +49,12 @@ def test_user_from_dict_defaults() -> None:
     assert user.user_free_bonuses == 0
     assert user.user_reserved_bonuses == 0
     assert user.chat_id is None
+    assert user.is_active is True
+
+
+def test_user_from_dict_reads_explicit_is_active() -> None:
+    d = User.from_dict({**USER_DICT, "is_active": False}).to_dict()
+    assert d["is_active"] is False
 
 
 # ---------------------------------------------------------------------------

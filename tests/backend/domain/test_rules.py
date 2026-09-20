@@ -1,6 +1,6 @@
 from datetime import date
 
-from m8_team.backend.domain.rules import can_afford, completed_on_time, write_off_allowed
+from m8_team.backend.domain.rules import can_afford, completed_on_time, is_active, write_off_allowed
 
 
 def test_completed_on_time_true_when_before_or_on_planned() -> None:
@@ -22,3 +22,13 @@ def test_can_afford() -> None:
 def test_write_off_allowed() -> None:
     assert write_off_allowed(50, 50)
     assert not write_off_allowed(49, 50)
+
+
+def test_is_active_defaults_to_true_when_field_missing_or_none() -> None:
+    assert is_active({})
+    assert is_active({"is_active": None})
+
+
+def test_is_active_respects_explicit_value() -> None:
+    assert is_active({"is_active": True})
+    assert not is_active({"is_active": False})
