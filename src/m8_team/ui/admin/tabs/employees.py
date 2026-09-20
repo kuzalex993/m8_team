@@ -5,8 +5,7 @@ services.
 
 from __future__ import annotations
 
-from datetime import date, timedelta
-from typing import cast
+from datetime import timedelta
 
 import streamlit as st
 
@@ -96,7 +95,7 @@ def _render_bonus_management_tab(selected_user_id: str, selected_user_name: str)
                 "Изменить баланс",
                 on_click=update_user_bonus,
                 args=(selected_user_id,),
-                use_container_width=True,
+                width="stretch",
                 type="primary",
             )
             if add_bonus:
@@ -131,12 +130,11 @@ def _render_challenge_assignment_tab(selected_user_name: str) -> None:
         challenge_duration = int(selected_challenge["challenge_planned_time_completion"].values[0])
         challenge_reward = int(selected_challenge["challenge_reward"].values[0])
     with col2:
-        raw_date = st.date_input(
+        start_date = st.date_input(
             label="Дата начала",
             key="challenge_to_assign_start_date_widget",
             format="DD/MM/YYYY",
         )
-        start_date = cast(date, raw_date)
     with col3:
         st.date_input(
             label="Дата окончания",
@@ -150,7 +148,7 @@ def _render_challenge_assignment_tab(selected_user_name: str) -> None:
     if selected_challenge is not None:
         assign_challenge_btn = st.button(
             label="Назначить задание",
-            use_container_width=True,
+            width="stretch",
             type="primary",
             on_click=add_new_user_challenge,
             args=(challenge_id, challenge_duration),
@@ -173,7 +171,7 @@ def _render_challenge_assignment_tab(selected_user_name: str) -> None:
         else:
             st.dataframe(
                 current_user_challenge_df,
-                use_container_width=False,
+                width="content",
                 column_order=(
                     "challenge_descripion",
                     "start_date",

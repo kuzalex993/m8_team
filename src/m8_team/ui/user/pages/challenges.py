@@ -2,8 +2,7 @@
 
 from __future__ import annotations
 
-from datetime import date, datetime, timedelta
-from typing import cast
+from datetime import datetime, timedelta
 
 import streamlit as st
 
@@ -15,7 +14,7 @@ from m8_team.ui.container import get_container
 from m8_team.ui.user.state import refresh_user_data
 
 
-@st.experimental_dialog("Задание закрыто")  # type: ignore[attr-defined]
+@st.dialog("Задание закрыто")
 def _completion_dialog(message: str) -> None:
     st.write(message)
 
@@ -69,12 +68,11 @@ def _render_new_challenge_picker() -> None:
             )
             challenge_reward = int(selected_challenge["challenge_reward"].values[0])
         with col2:
-            raw_date = st.date_input(
+            start_date = st.date_input(
                 label="Дата начала",
                 key="challenge_to_assign_start_date_widget",
                 format="DD/MM/YYYY",
             )
-        start_date = cast(date, raw_date)
         with col3:
             st.date_input(
                 label="Дата окончания",
@@ -88,7 +86,7 @@ def _render_new_challenge_picker() -> None:
         if selected_challenge is not None:
             st.button(
                 label="Назначить задание",
-                use_container_width=True,
+                width="stretch",
                 type="primary",
                 on_click=add_new_user_challenge,
                 args=(challenge_id, challenge_duration),
@@ -126,7 +124,7 @@ def _render_challenge_form(user_challenge: UserChallenge, *, is_new: bool) -> No
             )
         st.form_submit_button(
             label="Завершить",
-            use_container_width=True,
+            width="stretch",
             type="secondary",
             on_click=close_user_challenge,
             args=(user_challenge.id,),

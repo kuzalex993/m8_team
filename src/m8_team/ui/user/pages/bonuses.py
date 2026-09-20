@@ -59,7 +59,7 @@ def _render_reward_picker() -> None:
                     label="Получить награду",
                     on_click=request_reward,
                     args=(reward_id, reward_to_get, reward_price),
-                    use_container_width=True,
+                    width="stretch",
                     type="primary",
                 )
         else:
@@ -81,7 +81,7 @@ def _render_requested_rewards() -> None:
         rewards_df = pd.DataFrame(to_rewards_df).sort_values(by="request_date", ascending=False)
         st.dataframe(
             data=rewards_df,
-            use_container_width=True,
+            width="stretch",
             hide_index=True,
             column_order=["description", "request_date", "status"],
             column_config={

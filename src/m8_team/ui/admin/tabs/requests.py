@@ -43,7 +43,7 @@ def _render_pending_request(user_reward: UserReward) -> None:
         with request_col4:
             submitted = st.form_submit_button(
                 label="Подтвердить",
-                use_container_width=True,
+                width="stretch",
                 type="primary",
                 on_click=confirm_user_request,
                 args=(user_reward.id, user_reward.user_id, user_reward.reward_id),
@@ -90,7 +90,7 @@ def render_requests_tab() -> None:
             )
             st.dataframe(
                 completed_rewards_df,
-                use_container_width=True,
+                width="stretch",
                 column_order=("description", "name", "request_date", "status", "decision_date"),
                 column_config={
                     "description": "Описание награды",
