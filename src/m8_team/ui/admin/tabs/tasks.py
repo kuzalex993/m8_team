@@ -21,12 +21,21 @@ def add_new_challenge() -> None:
     cache.challenges_df(force_refresh=True)
 
 
+def _edit_key(field: str, challenge_id: str | None) -> str:
+    """Widget key for an edit field, scoped to the selected item.
+
+    Streamlit keeps a keyed widget's state when its ``value=`` changes, so the edit fields
+    need a fresh key per item to be re-seeded with that item's current values.
+    """
+    return f"edit_challenge_{field}_widget_{challenge_id}"
+
+
 def update_challenge(challenge_id: str) -> None:
     ok = get_container().challenge.update_catalogue_item(
         challenge_id,
-        description=st.session_state.edit_challenge_description_widget,
-        reward=st.session_state.edit_challenge_reward_widget,
-        planned_time=st.session_state.edit_challenge_planned_time_widget,
+        description=st.session_state[_edit_key("description", challenge_id)],
+        reward=st.session_state[_edit_key("reward", challenge_id)],
+        planned_time=st.session_state[_edit_key("planned_time", challenge_id)],
     )
     feedback.mark_ok() if ok else feedback.mark_failed()
     cache.challenges_df(force_refresh=True)
@@ -83,7 +92,7 @@ def _render_edit_challenge_fields(task_to_edit: str | None) -> str | None:
         st.text_area(
             value=task_description_to_edit,
             label="Новое задание",
-            key="edit_challenge_description_widget",
+            key=_edit_key("description", challenge_id),
             placeholder="Описание задания",
             max_chars=200,
             height=120,
@@ -92,7 +101,7 @@ def _render_edit_challenge_fields(task_to_edit: str | None) -> str | None:
         st.number_input(
             value=task_award_to_edit,
             label="Новая награда за выполнение",
-            key="edit_challenge_reward_widget",
+            key=_edit_key("reward", challenge_id),
             min_value=0,
             step=1,
             placeholder="Введите количество баллов",
@@ -100,7 +109,7 @@ def _render_edit_challenge_fields(task_to_edit: str | None) -> str | None:
         st.number_input(
             value=task_planned_time_to_edit,
             label="Новое время на выполнение",
-            key="edit_challenge_planned_time_widget",
+            key=_edit_key("planned_time", challenge_id),
             min_value=0,
             step=1,
             placeholder="Введите количестов дней...",

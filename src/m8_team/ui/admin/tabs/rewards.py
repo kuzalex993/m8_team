@@ -18,11 +18,16 @@ def add_new_reward() -> None:
     cache.rewards_df(force_refresh=True)
 
 
+def _edit_key(field: str, reward_id: str | None) -> str:
+    """Widget key for an edit field, scoped to the selected item (see ``tasks._edit_key``)."""
+    return f"edit_reward_{field}_widget_{reward_id}"
+
+
 def update_reward(reward_id: str) -> None:
     ok = get_container().reward.update_catalogue_item(
         reward_id,
-        description=st.session_state.edit_reward_description_widget,
-        price=st.session_state.edit_reward_price_widget,
+        description=st.session_state[_edit_key("description", reward_id)],
+        price=st.session_state[_edit_key("price", reward_id)],
     )
     feedback.mark_ok() if ok else feedback.mark_failed()
     cache.rewards_df(force_refresh=True)
@@ -66,7 +71,7 @@ def _render_edit_reward_fields(reward_to_edit: str | None) -> str | None:
         st.text_area(
             value=reward_description_to_edit,
             label="Новая награда",
-            key="edit_reward_description_widget",
+            key=_edit_key("description", reward_id),
             placeholder="Новое опасание награды",
             max_chars=200,
         )
@@ -74,7 +79,7 @@ def _render_edit_reward_fields(reward_to_edit: str | None) -> str | None:
         st.number_input(
             value=reward_price_to_edit,
             label="Новая стоимость награды",
-            key="edit_reward_price_widget",
+            key=_edit_key("price", reward_id),
             min_value=0,
             step=1,
             placeholder="Введите количество баллов",
