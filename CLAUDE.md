@@ -101,10 +101,15 @@ Both pages use `streamlit_option_menu` sidebars and drive state through `st.sess
 ### Firestore collections
 
 `credentials` (auth config, one doc per section), `users` (doc id = username; holds
-`user_free_bonuses`, `user_reserved_bonuses`, `chat_id`, ...), `challenges`, `rewards`,
-`user_challenge`, `user_reward`, `user_bonus` (append-only transaction ledger).
+`user_free_bonuses`, `user_reserved_bonuses`, `chat_id`, `is_active`, ...), `challenges`,
+`rewards`, `user_challenge`, `user_reward`, `user_bonus` (append-only transaction ledger).
 Document IDs are used as foreign keys across collections (e.g. `user_bonus.user_id` is a
 `users` doc id), so preserve IDs in any migration.
+
+`users.is_active` is the team-membership flag: `false` marks a former employee, and a doc
+without the field counts as active (`domain/rules.py::is_active`). A `user_id` that still
+appears in `user_challenge` / `user_bonus` but has no `users` doc (profile deleted) is also
+treated as a former employee — see [Team membership and stats](#team-membership-and-stats).
 
 ### Bonus economy
 
@@ -112,6 +117,10 @@ Each user has `user_free_bonuses` (spendable) and `user_reserved_bonuses` (locke
 a pending reward request). Every balance change also appends a `user_bonus` ledger row.
 `transaction_type` values live in `domain/enums.py::TransactionType`
 (`"charge bonus"`, `"write off bonus"`, `"reserve bonus"`, `"debiting bonus"`).
+
+Ledger rows carry an `event_type` (`domain/enums.py::EventType`): `"admin"` (added by an
+admin), `"user_challenge"` (reward for a finished challenge) or `"user_reward"`. The stats
+tab uses it to split earned bonuses by source.
 
 **All balance mutations go through `backend/repositories/bonus_ledger_repo.py`** — one of
 `charge_atomic` (admin add / write-off, challenge reward), `reserve_atomic` (reward
@@ -131,6 +140,42 @@ tabs. `ui/user/page.py` dispatches the three user pages under `ui/user/pages/`.
 `ui/common/cache.py` is the session-state read cache (whole-collection listings fetched once,
 re-read only on `force_refresh=True` after a mutation) — the UI-side replacement for the old
 `components/admin/data.py`.
+
+### Team membership and stats
+
+The admin **Сотрудники** tab has a "Работает в команде" toggle per employee that sets
+`users.is_active` (`UserService.set_active`), and a "Показать бывших сотрудников" toggle
+that adds former employees to the employee picker.
+
+The admin **Статистика** tab (`ui/admin/tabs/stats.py`, aggregation in
+`backend/services/stats_service.py`) shows two stacked bar charts, each with its own
+"Период" date picker (independent, default `default_period(today)`: three calendar months
+back up to today, never before 2024-01-01):
+
+- **Заработанные бонусы** — `charge bonus` ledger rows in the period, stacked by
+  `event_type`: "За задания" (`user_challenge`) and "Начислено администратором" (`admin`).
+  Any other `event_type` goes to an "Другое" column that appears only when present, so the
+  totals always add up.
+- **Выполненные задания** — `user_challenge` rows with `challenge_status == finished`,
+  matched to the period by `fact_finish_date` (inclusive days, UTC) and split by
+  `challenge_success` into "Успешно" (green) / "Неуспешно" (red). Open challenges are not
+  counted, and a finished challenge without a parseable `fact_finish_date` is left out of
+  any period-bound count.
+
+Which employees count is decided in `StatsService._counted_mask` (one place for both
+charts): by default only **current team members** — the `users` doc exists and is active.
+Everyone else is a former employee, including ids whose `users` doc was deleted. The
+"Добавить бывших сотрудников" toggle (`include_inactive=True`) counts them too. Service
+accounts in `domain/constants.py::EXCLUDED_EMPLOYEE_IDS` are never counted. In the bonuses
+chart a deleted profile has no name, so its raw `user_id` is shown.
+
+The service returns wide pandas tables; the UI reshapes them to long format with the
+Russian field names `Имя` / `Бонусов` / `Тип` / `Заданий` / `Результат`, which show in the
+tooltip and as the legend title (axis titles are hidden). Both charts go through
+`stacked_bar_chart` and are drawn with Altair (a Streamlit dependency, not declared in
+`pyproject.toml`) instead of `st.bar_chart`, which can't put the legend on the right or fix
+series colours next to Russian field names. Leave the colour `scale` undefined when unset —
+`scale=None` serialises as `"scale": null` and switches scaling off in Vega-Lite.
 
 Telegram notifications: `backend/notifications/telegram.py` (token from `Config.bot_token`,
 env var `BOT_TOKEN`), fronted by `backend/services/notification_service.py` which resolves
@@ -162,6 +207,12 @@ Layout under `tests/`:
 - `tests/backend/repositories/` — the Firestore client is a `MagicMock` passed into the
   repo constructor (see `test_bonus_ledger_repo.py`); still no `firebase_admin` patching
   because `get_client` is lazy.
+- `tests/ui/` — headless UI tests with `streamlit.testing.v1.AppTest` and no browser or
+  Firebase. `conftest.py` seeds `st.session_state["container"]` with a `MagicMock`
+  `Container` (which `ui/container.py::get_container` reads), so the whole backend is
+  faked. `test_pages_render.py` renders every admin tab and user page (including the stats
+  chart specs, parsed from the Vega-Lite JSON); the other files cover the admin edit forms,
+  challenge completion, and guard imports and removed or deprecated Streamlit APIs.
 - `tests/architecture/test_layering.py` — AST guard for the UI/backend import contract.
 
 ## Scripts

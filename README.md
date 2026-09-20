@@ -50,12 +50,26 @@ src/m8_team/backend/   transport-agnostic: domain, repositories, services, notif
 src/m8_team/ui/        Streamlit UI: admin + user pages, calls backend/services
 src/credentials/       Firebase service account keys (gitignored)
 scripts/               one-off admin scripts, not part of the app/CI (see scripts/README.md)
-tests/                 backend/{domain,services,repositories} + architecture guard
+tests/                 backend/{domain,services,repositories}, ui (AppTest), architecture guard
 DEPLOYMENT.md          deployment pipeline & one-time server setup
 ```
 
 The dependency rule: `ui/` imports `backend/`, never the reverse; nothing under `backend/`
 imports `streamlit`. `tests/architecture/test_layering.py` enforces it.
+
+## Admin statistics
+
+The admin **Статистика** tab shows two charts, each with its own date picker (default: the
+last three months):
+
+- **Заработанные бонусы** — bonuses earned per employee, split into bonuses for finished
+  challenges and bonuses added by an admin.
+- **Выполненные задания** — finished challenges per employee, split into successful and
+  unsuccessful.
+
+By default only current team members are counted. An employee is a former one if their
+"Работает в команде" toggle (admin **Сотрудники** tab) is off or their profile was deleted;
+the "Добавить бывших сотрудников" toggle on the stats tab includes them.
 
 ## Deployment
 

@@ -112,9 +112,11 @@ def container() -> MagicMock:
     ]
 
     c.stats.finished_challenges_by_user.return_value = pd.DataFrame(
-        {"success": [2], "failure": [1]}, index=["Иван"]
+        {"Успешно": [2], "Неуспешно": [1]}, index=["Иван"]
     )
-    c.stats.bonuses_earned_by_user.return_value = pd.Series([30], index=["Иван"])
+    c.stats.bonuses_earned_by_user.return_value = pd.DataFrame(
+        {"challenges": [20], "admin": [10]}, index=["Иван"]
+    )
     c.stats.earned_bonus_rows.return_value = []
     return c
 

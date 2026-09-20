@@ -215,6 +215,11 @@ def _render_team_membership(selected_user_id: str, selected_user_name: str) -> N
         key=f"is_active_{selected_user_id}",
         on_change=update_user_active,
         args=(selected_user_id,),
+        help=(
+            "Выключив переключатель, вы переводите сотрудника в неактивный статус. "
+            "Он больше не будет отображаться в списках и статистике по умолчанию. "
+            "Данные о пользователе и его история не удаляются."
+        ),
     )
     result = st.session_state.pop("active_toggle_ok", None)
     if result is True:
@@ -226,7 +231,11 @@ def _render_team_membership(selected_user_id: str, selected_user_name: str) -> N
 def render_employees_tab() -> None:
     st.subheader("Сотрудники")
     users_map = cache.users_map(force_refresh=True)
-    show_former = st.checkbox("Показать бывших сотрудников", key="show_former_employees")
+    show_former = st.toggle(
+        "Показать бывших сотрудников",
+        key="show_former_employees",
+        help="Включите, если хотите, чтобы бывшие сотрудники отображались в списке.",
+    )
     inactive = cache.inactive_user_names()
     users_list = [name for name in users_map if show_former or name not in inactive]
     selected_user_name = st.selectbox(

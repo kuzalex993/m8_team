@@ -6,7 +6,9 @@ charts, date pickers, metrics, forms) against regressions while the deprecated c
 
 from __future__ import annotations
 
+import json
 from collections.abc import Callable
+from datetime import date
 from typing import Any
 
 import pytest
@@ -117,7 +119,7 @@ def test_employee_toggle_calls_set_active(make_app: Callable[..., AppTest], cont
     assert any("обновлен" in m.value for m in at.success)
 
 
-def test_former_employees_hidden_until_checkbox_ticked(
+def test_former_employees_hidden_until_toggle_on(
     make_app: Callable[..., AppTest], container: Any
 ) -> None:
     container.user.employee_directory.return_value = [
@@ -127,7 +129,7 @@ def test_former_employees_hidden_until_checkbox_ticked(
     at = make_app(_employees, session=ADMIN_STATE).run()
     assert at.selectbox(key="selected_user_name").options == ["Иван"]
 
-    at.checkbox(key="show_former_employees").check().run()
+    at.toggle(key="show_former_employees").set_value(True).run()
     assert at.selectbox(key="selected_user_name").options == ["Иван", "Пётр"]
 
 
@@ -142,6 +144,71 @@ def test_stats_renders_both_charts(make_app: Callable[..., AppTest]) -> None:
     at = make_app(_stats).run()
     assert not at.exception
     assert len(at.get("vega_lite_chart")) == 2
+
+
+def test_stats_bonus_chart_uses_russian_field_names(make_app: Callable[..., AppTest]) -> None:
+    at = make_app(_stats).run()
+
+    assert not at.exception
+    spec = json.loads(at.get("vega_lite_chart")[0].proto.spec)
+    encoding = spec["encoding"]
+    assert [encoding[c]["field"] for c in ("x", "y", "color")] == ["Имя", "Бонусов", "Тип"]
+    assert [t["field"] for t in encoding["tooltip"]] == ["Имя", "Бонусов", "Тип"]
+    assert encoding["x"]["title"] is None and encoding["y"]["title"] is None  # no axis titles
+    assert "scale" not in encoding["color"]  # default palette; ``scale: null`` would break it
+
+
+def test_stats_challenges_chart_is_stacked_green_and_red_with_russian_names(
+    make_app: Callable[..., AppTest],
+) -> None:
+    at = make_app(_stats).run()
+
+    assert not at.exception
+    encoding = json.loads(at.get("vega_lite_chart")[1].proto.spec)["encoding"]
+    assert [encoding[c]["field"] for c in ("x", "y", "color")] == ["Имя", "Заданий", "Результат"]
+    assert [t["field"] for t in encoding["tooltip"]] == ["Имя", "Заданий", "Результат"]
+    assert encoding["x"]["title"] is None and encoding["y"]["title"] is None  # no axis titles
+    scale = encoding["color"]["scale"]
+    assert dict(zip(scale["domain"], scale["range"], strict=True)) == {
+        "Успешно": "#2ecc71",
+        "Неуспешно": "#e74c3c",
+    }
+
+
+def test_stats_charts_have_their_legend_on_the_right(make_app: Callable[..., AppTest]) -> None:
+    at = make_app(_stats).run()
+
+    assert not at.exception
+    charts = at.get("vega_lite_chart")
+    assert len(charts) == 2
+    for chart in charts:
+        encoding = json.loads(chart.proto.spec)["encoding"]
+        assert encoding["color"]["legend"]["orient"] == "right"
+
+
+def test_stats_period_defaults_to_last_three_months(make_app: Callable[..., AppTest]) -> None:
+    from m8_team.ui.admin.tabs.stats import default_period
+
+    at = make_app(_stats).run()
+
+    expected = default_period(date.today())
+    assert at.date_input(key="bonus_stats_date_range").value == expected
+    assert at.date_input(key="challenges_stats_date_range").value == expected
+
+
+def test_stats_challenges_chart_is_filtered_by_its_own_period(
+    make_app: Callable[..., AppTest], container: Any
+) -> None:
+    at = make_app(_stats).run()
+    container.stats.finished_challenges_by_user.reset_mock()
+
+    new_period = (date(2026, 1, 1), date(2026, 1, 31))
+    at.date_input(key="challenges_stats_date_range").set_value(new_period).run()
+
+    assert not at.exception
+    assert container.stats.finished_challenges_by_user.call_args.kwargs["period"] == new_period
+    # the bonuses picker is independent
+    assert at.date_input(key="bonus_stats_date_range").value != new_period
 
 
 def test_user_bonuses_page_shows_balance(
