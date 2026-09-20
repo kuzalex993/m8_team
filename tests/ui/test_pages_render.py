@@ -6,6 +6,7 @@ charts, date pickers, metrics, forms) against regressions while the deprecated c
 
 from __future__ import annotations
 
+import json
 from collections.abc import Callable
 from datetime import date
 from typing import Any
@@ -143,6 +144,16 @@ def test_stats_renders_both_charts(make_app: Callable[..., AppTest]) -> None:
     at = make_app(_stats).run()
     assert not at.exception
     assert len(at.get("vega_lite_chart")) == 2
+
+
+def test_stats_bonus_chart_uses_russian_field_names(make_app: Callable[..., AppTest]) -> None:
+    at = make_app(_stats).run()
+
+    assert not at.exception
+    spec = json.loads(at.get("vega_lite_chart")[0].proto.spec)
+    encoding = spec["encoding"]
+    assert [encoding[c]["field"] for c in ("x", "y", "color")] == ["Имя", "Бонусов", "Тип"]
+    assert [t["field"] for t in encoding["tooltip"]] == ["Имя", "Бонусов", "Тип"]
 
 
 def test_stats_period_defaults_to_last_three_months(make_app: Callable[..., AppTest]) -> None:

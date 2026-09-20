@@ -14,6 +14,11 @@ from m8_team.ui.container import get_container
 
 EARLIEST_DATE = date(2024, 1, 1)
 
+# Chart field names: Vega uses the column names for axis titles, tooltips and the legend.
+NAME_LABEL = "Имя"
+BONUSES_LABEL = "Бонусов"
+SOURCE_LABEL = "Тип"
+
 
 def default_bonus_range(today: date) -> tuple[date, date]:
     """Default period: three calendar months back from ``today`` up to ``today``."""
@@ -41,6 +46,16 @@ def _render_bonus_range_picker() -> tuple[date, date] | None:
     return start_date, end_date
 
 
+def bonuses_long_format(bonus_totals: pd.DataFrame) -> pd.DataFrame:
+    """Wide ``user_name x source`` table -> long ``Имя / Тип / Бонусов`` rows, the shape
+    ``st.bar_chart`` needs to stack by ``Тип`` under Russian field names."""
+    return (
+        bonus_totals.rename_axis(NAME_LABEL)
+        .reset_index()
+        .melt(id_vars=NAME_LABEL, var_name=SOURCE_LABEL, value_name=BONUSES_LABEL)
+    )
+
+
 def _render_bonuses_section(*, include_inactive: bool) -> None:
     stats = get_container().stats
     st.markdown("#### Заработанные бонусы по сотрудникам")
@@ -54,7 +69,12 @@ def _render_bonuses_section(*, include_inactive: bool) -> None:
     if bonus_totals.empty:
         st.info("За выбранный период никто не заработал бонусов.")
     else:
-        st.bar_chart(bonus_totals)
+        st.bar_chart(
+            bonuses_long_format(bonus_totals),
+            x=NAME_LABEL,
+            y=BONUSES_LABEL,
+            color=SOURCE_LABEL,
+        )
 
 
 def _render_finished_challenges_section(*, include_inactive: bool) -> None:
