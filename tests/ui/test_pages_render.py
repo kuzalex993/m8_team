@@ -154,6 +154,7 @@ def test_stats_bonus_chart_uses_russian_field_names(make_app: Callable[..., AppT
     encoding = spec["encoding"]
     assert [encoding[c]["field"] for c in ("x", "y", "color")] == ["Имя", "Бонусов", "Тип"]
     assert [t["field"] for t in encoding["tooltip"]] == ["Имя", "Бонусов", "Тип"]
+    assert encoding["x"]["title"] == encoding["y"]["title"] == ""  # no axis titles
 
 
 def test_stats_period_defaults_to_last_three_months(make_app: Callable[..., AppTest]) -> None:

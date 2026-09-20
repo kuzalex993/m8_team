@@ -14,7 +14,7 @@ from m8_team.ui.container import get_container
 
 EARLIEST_DATE = date(2024, 1, 1)
 
-# Chart field names: Vega uses the column names for axis titles, tooltips and the legend.
+# Chart field names: Vega shows them in the tooltip and as the legend title.
 NAME_LABEL = "Имя"
 BONUSES_LABEL = "Бонусов"
 SOURCE_LABEL = "Тип"
@@ -74,6 +74,8 @@ def _render_bonuses_section(*, include_inactive: bool) -> None:
             x=NAME_LABEL,
             y=BONUSES_LABEL,
             color=SOURCE_LABEL,
+            x_label="",  # the field names are for the tooltip and legend, not axis titles
+            y_label="",
         )
 
 
