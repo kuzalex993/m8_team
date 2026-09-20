@@ -5,8 +5,7 @@ services.
 
 from __future__ import annotations
 
-from datetime import date, timedelta
-from typing import cast
+from datetime import timedelta
 
 import streamlit as st
 
@@ -131,12 +130,11 @@ def _render_challenge_assignment_tab(selected_user_name: str) -> None:
         challenge_duration = int(selected_challenge["challenge_planned_time_completion"].values[0])
         challenge_reward = int(selected_challenge["challenge_reward"].values[0])
     with col2:
-        raw_date = st.date_input(
+        start_date = st.date_input(
             label="Дата начала",
             key="challenge_to_assign_start_date_widget",
             format="DD/MM/YYYY",
         )
-        start_date = cast(date, raw_date)
     with col3:
         st.date_input(
             label="Дата окончания",
