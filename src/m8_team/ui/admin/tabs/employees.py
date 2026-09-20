@@ -41,6 +41,12 @@ def update_user_bonus(user_id: str) -> None:
     st.session_state.current_user_balance = get_container().user.free_bonuses(user_id)
 
 
+def update_user_active(user_id: str) -> None:
+    ok = get_container().user.set_active(user_id, bool(st.session_state[f"is_active_{user_id}"]))
+    st.session_state["active_toggle_ok"] = ok
+    cache.users_map(force_refresh=True)
+
+
 def add_new_user_challenge(challenge_id: int, challenge_duration: int) -> None:
     if not st.session_state.selected_user_name:
         return
@@ -202,10 +208,27 @@ def _render_challenge_assignment_tab(selected_user_name: str) -> None:
             )
 
 
+def _render_team_membership(selected_user_id: str, selected_user_name: str) -> None:
+    st.toggle(
+        "Работает в команде",
+        value=selected_user_name not in cache.inactive_user_names(),
+        key=f"is_active_{selected_user_id}",
+        on_change=update_user_active,
+        args=(selected_user_id,),
+    )
+    result = st.session_state.pop("active_toggle_ok", None)
+    if result is True:
+        st.success(f"Статус сотрудника {selected_user_name} обновлен")
+    elif result is False:
+        st.error("Не удалось обновить статус сотрудника")
+
+
 def render_employees_tab() -> None:
     st.subheader("Сотрудники")
     users_map = cache.users_map(force_refresh=True)
-    users_list = list(users_map.keys())
+    show_former = st.checkbox("Показать бывших сотрудников", key="show_former_employees")
+    inactive = cache.inactive_user_names()
+    users_list = [name for name in users_map if show_former or name not in inactive]
     selected_user_name = st.selectbox(
         label="Cотрудник",
         index=None,
@@ -218,6 +241,7 @@ def render_employees_tab() -> None:
         return
 
     selected_user_id = users_map[selected_user_name]
+    _render_team_membership(selected_user_id, selected_user_name)
     tab1, tab2 = st.tabs(
         ["📈 Управление бонусами пользователей", "🗃 Управление заданиями пользователей"]
     )

@@ -85,6 +85,7 @@ def container() -> MagicMock:
     c.reward.list_catalogue.side_effect = lambda: [dict(r) for r in REWARDS]
 
     c.user.employee_map.return_value = {"Иван": "ivan"}
+    c.user.employee_directory.return_value = [("Иван", "ivan", True)]
     c.user.free_bonuses.return_value = 120
     c.user.get_raw.side_effect = lambda _user_id: dict(USER_DATA)
 

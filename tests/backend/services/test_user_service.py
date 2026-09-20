@@ -66,3 +66,31 @@ def test_employee_map_excludes_service_accounts(
         "alekseik": {"user_name": "Aleksei"},
     }
     assert service.employee_map() == {"Alice": "alice"}
+
+
+def test_employee_directory_treats_missing_field_as_active(
+    users_repo: MagicMock, service: UserService
+) -> None:
+    users_repo.all.return_value = {
+        "old": {"user_name": "Old"},
+        "gone": {"user_name": "Gone", "is_active": False},
+        "admin": {"user_name": "Admin"},
+    }
+    directory = service.employee_directory()
+    assert ("Old", "old", True) in directory
+    assert ("Gone", "gone", False) in directory
+    assert all(user_id != "admin" for _, user_id, _ in directory)
+
+
+def test_employee_map_includes_inactive(users_repo: MagicMock, service: UserService) -> None:
+    users_repo.all.return_value = {
+        "a": {"user_name": "A"},
+        "b": {"user_name": "B", "is_active": False},
+    }
+    assert service.employee_map() == {"A": "a", "B": "b"}
+
+
+def test_set_active_delegates(users_repo: MagicMock, service: UserService) -> None:
+    users_repo.set_active.return_value = False
+    assert service.set_active("u1", False) is False
+    users_repo.set_active.assert_called_once_with("u1", False)

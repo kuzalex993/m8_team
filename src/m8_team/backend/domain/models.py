@@ -21,6 +21,7 @@ class User:
     user_free_bonuses: int = 0
     user_reserved_bonuses: int = 0
     chat_id: str | None = None
+    is_active: bool = True
     id: str | None = field(default=None, repr=False)
 
     def to_dict(self) -> dict[str, Any]:
@@ -38,6 +39,7 @@ class User:
             user_free_bonuses=d.get("user_free_bonuses", 0),
             user_reserved_bonuses=d.get("user_reserved_bonuses", 0),
             chat_id=d.get("chat_id"),
+            is_active=d.get("is_active", True),
             id=doc_id or d.get("id"),
         )
 

@@ -40,9 +40,21 @@ def user_challenge_df(*, force_refresh: bool = False) -> pd.DataFrame:
 
 
 def users_map(*, force_refresh: bool = False) -> dict[str, str]:
+    """``{user_name: user_id}`` for all employees, former ones included. The set of former
+    employees' names is cached alongside as ``users_inactive_names`` (see
+    :func:`inactive_user_names`)."""
     if force_refresh or "users_data_map" not in st.session_state:
-        st.session_state.users_data_map = get_container().user.employee_map()
+        directory = get_container().user.employee_directory()
+        st.session_state.users_data_map = {name: user_id for name, user_id, _ in directory}
+        st.session_state.users_inactive_names = {
+            name for name, _, active in directory if not active
+        }
     return st.session_state.users_data_map  # type: ignore[no-any-return]
+
+
+def inactive_user_names() -> set[str]:
+    users_map()
+    return st.session_state.users_inactive_names  # type: ignore[no-any-return]
 
 
 def earned_bonus_rows(

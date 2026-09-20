@@ -10,6 +10,7 @@ import logging
 
 from m8_team.backend.domain.constants import EXCLUDED_EMPLOYEE_IDS
 from m8_team.backend.domain.models import User
+from m8_team.backend.domain.rules import is_active
 from m8_team.backend.repositories.users_repo import UsersRepo
 
 logger = logging.getLogger(__name__)
@@ -28,13 +29,22 @@ class UserService:
     def create_employee(self, *, email: str, username: str, name: str) -> bool:
         return self._users.create(email=email, username=username, name=name)
 
-    def employee_map(self) -> dict[str, str]:
-        """``{user_name: user_id}`` for real employees only."""
-        return {
-            data["user_name"]: user_id
+    def set_active(self, user_id: str, active: bool) -> bool:
+        return self._users.set_active(user_id, active)
+
+    def employee_directory(self) -> list[tuple[str, str, bool]]:
+        """``(user_name, user_id, is_active)`` for real employees only. Docs without the
+        ``is_active`` field count as active."""
+        return [
+            (data["user_name"], user_id, is_active(data))
             for user_id, data in self._users.all().items()
             if user_id not in EXCLUDED_EMPLOYEE_IDS
-        }
+        ]
+
+    def employee_map(self) -> dict[str, str]:
+        """``{user_name: user_id}`` for all real employees, former ones included (stats
+        resolve historical ledger rows through this)."""
+        return {name: user_id for name, user_id, _ in self.employee_directory()}
 
     def free_bonuses(self, user_id: str) -> int | None:
         """Ported verbatim from ``components/admin/data.py::get_user_bonus`` - int passes

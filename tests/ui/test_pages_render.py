@@ -103,6 +103,34 @@ def test_employee_tabs_render_after_selecting_a_user(
     assert len(at.dataframe) == 1  # the user's open assignments
 
 
+def test_employee_toggle_calls_set_active(make_app: Callable[..., AppTest], container: Any) -> None:
+    container.user.set_active.return_value = True
+    at = make_app(_employees, session=ADMIN_STATE).run()
+    at.selectbox(key="selected_user_name").select("Иван").run()
+
+    toggle = at.toggle(key="is_active_ivan")
+    assert toggle.value is True  # docs without the field count as active
+    toggle.set_value(False).run()
+
+    container.user.set_active.assert_called_once_with("ivan", False)
+    assert not at.exception
+    assert any("обновлен" in m.value for m in at.success)
+
+
+def test_former_employees_hidden_until_checkbox_ticked(
+    make_app: Callable[..., AppTest], container: Any
+) -> None:
+    container.user.employee_directory.return_value = [
+        ("Иван", "ivan", True),
+        ("Пётр", "petr", False),
+    ]
+    at = make_app(_employees, session=ADMIN_STATE).run()
+    assert at.selectbox(key="selected_user_name").options == ["Иван"]
+
+    at.checkbox(key="show_former_employees").check().run()
+    assert at.selectbox(key="selected_user_name").options == ["Иван", "Пётр"]
+
+
 def test_admin_requests_lists_pending_request(make_app: Callable[..., AppTest], find: Find) -> None:
     at = make_app(_requests).run()
     assert not at.exception

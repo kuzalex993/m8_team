@@ -46,8 +46,12 @@ class UsersRepo(BaseRepo):
             "user_reserved_bonuses": 0,
             "user_role": "user",
             "chat_id": None,
+            "is_active": True,
         }
         return self.set_document(USERS, username, data)
 
     def update(self, user_id: str, data: dict[str, Any]) -> bool:
         return self.update_document(USERS, user_id, data)
+
+    def set_active(self, user_id: str, active: bool) -> bool:
+        return self.update(user_id, {"is_active": active})
