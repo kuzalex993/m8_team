@@ -157,6 +157,23 @@ def test_stats_bonus_chart_uses_russian_field_names(make_app: Callable[..., AppT
     assert encoding["x"]["title"] == encoding["y"]["title"] == ""  # no axis titles
 
 
+def test_stats_challenges_chart_is_stacked_green_and_red_with_russian_names(
+    make_app: Callable[..., AppTest],
+) -> None:
+    at = make_app(_stats).run()
+
+    assert not at.exception
+    encoding = json.loads(at.get("vega_lite_chart")[1].proto.spec)["encoding"]
+    assert [encoding[c]["field"] for c in ("x", "y", "color")] == ["Имя", "Заданий", "Результат"]
+    assert [t["field"] for t in encoding["tooltip"]] == ["Имя", "Заданий", "Результат"]
+    assert encoding["x"]["title"] is None and encoding["y"]["title"] is None  # no axis titles
+    scale = encoding["color"]["scale"]
+    assert dict(zip(scale["domain"], scale["range"], strict=True)) == {
+        "Успешно": "#2ecc71",
+        "Неуспешно": "#e74c3c",
+    }
+
+
 def test_stats_period_defaults_to_last_three_months(make_app: Callable[..., AppTest]) -> None:
     from m8_team.ui.admin.tabs.stats import default_period
 
