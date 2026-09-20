@@ -26,7 +26,7 @@ def render_add_expander(
     with st.expander(label=title, expanded=expanded), st.form(form_key):
         render_fields()
         submitted = st.form_submit_button(
-            label=submit_label, on_click=on_submit, use_container_width=True, type="primary"
+            label=submit_label, on_click=on_submit, width="stretch", type="primary"
         )
         show_result(submitted, success_message, error_message)
 
@@ -59,7 +59,7 @@ def render_edit_expander(
                 label=submit_label,
                 on_click=on_submit,
                 args=(item_id,),
-                use_container_width=True,
+                width="stretch",
                 type="primary",
             )
             show_result(submitted, success_message, error_message)

@@ -119,7 +119,7 @@ def render_rewards_tab() -> None:
     with st.expander(label="База наград :books:"):
         st.dataframe(
             cache.rewards_df(),
-            use_container_width=False,
+            width="content",
             column_order=("reward_description", "reward_price", "reward_last_update"),
             column_config={
                 "reward_description": "Описание награды",

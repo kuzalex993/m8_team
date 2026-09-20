@@ -149,7 +149,7 @@ def render_tasks_tab() -> None:
     with st.expander(label="База заданий :books:"):
         st.dataframe(
             cache.challenges_df(),
-            use_container_width=False,
+            width="content",
             column_order=(
                 "challenge_description",
                 "challenge_reward",

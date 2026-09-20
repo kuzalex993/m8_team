@@ -95,7 +95,7 @@ def _render_bonus_management_tab(selected_user_id: str, selected_user_name: str)
                 "Изменить баланс",
                 on_click=update_user_bonus,
                 args=(selected_user_id,),
-                use_container_width=True,
+                width="stretch",
                 type="primary",
             )
             if add_bonus:
@@ -148,7 +148,7 @@ def _render_challenge_assignment_tab(selected_user_name: str) -> None:
     if selected_challenge is not None:
         assign_challenge_btn = st.button(
             label="Назначить задание",
-            use_container_width=True,
+            width="stretch",
             type="primary",
             on_click=add_new_user_challenge,
             args=(challenge_id, challenge_duration),
@@ -171,7 +171,7 @@ def _render_challenge_assignment_tab(selected_user_name: str) -> None:
         else:
             st.dataframe(
                 current_user_challenge_df,
-                use_container_width=False,
+                width="content",
                 column_order=(
                     "challenge_descripion",
                     "start_date",

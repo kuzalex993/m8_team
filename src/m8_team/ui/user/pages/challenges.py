@@ -86,7 +86,7 @@ def _render_new_challenge_picker() -> None:
         if selected_challenge is not None:
             st.button(
                 label="Назначить задание",
-                use_container_width=True,
+                width="stretch",
                 type="primary",
                 on_click=add_new_user_challenge,
                 args=(challenge_id, challenge_duration),
@@ -124,7 +124,7 @@ def _render_challenge_form(user_challenge: UserChallenge, *, is_new: bool) -> No
             )
         st.form_submit_button(
             label="Завершить",
-            use_container_width=True,
+            width="stretch",
             type="secondary",
             on_click=close_user_challenge,
             args=(user_challenge.id,),
