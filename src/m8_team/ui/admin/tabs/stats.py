@@ -14,27 +14,31 @@ from m8_team.ui.container import get_container
 
 EARLIEST_DATE = date(2024, 1, 1)
 
+# Each chart has its own period picker, so they are independent.
+BONUSES_PERIOD_KEY = "bonus_stats_date_range"
+CHALLENGES_PERIOD_KEY = "challenges_stats_date_range"
+
 # Chart field names: Vega shows them in the tooltip and as the legend title.
 NAME_LABEL = "Имя"
 BONUSES_LABEL = "Бонусов"
 SOURCE_LABEL = "Тип"
 
 
-def default_bonus_range(today: date) -> tuple[date, date]:
+def default_period(today: date) -> tuple[date, date]:
     """Default period: three calendar months back from ``today`` up to ``today``."""
     three_months_ago = (pd.Timestamp(today) - pd.DateOffset(months=3)).date()
     return max(three_months_ago, EARLIEST_DATE), today
 
 
-def _render_bonus_range_picker() -> tuple[date, date] | None:
+def _render_period_picker(key: str) -> tuple[date, date] | None:
     latest_date = date.today()
     selected_range = st.date_input(
         label="Период",
-        value=default_bonus_range(latest_date),
+        value=default_period(latest_date),
         min_value=EARLIEST_DATE,
         max_value=latest_date,
         format="DD.MM.YYYY",
-        key="bonus_stats_date_range",
+        key=key,
     )
     if not isinstance(selected_range, tuple) or len(selected_range) != 2:
         st.info("Выберите начальную и конечную дату периода.")
@@ -59,7 +63,7 @@ def bonuses_long_format(bonus_totals: pd.DataFrame) -> pd.DataFrame:
 def _render_bonuses_section(*, include_inactive: bool) -> None:
     stats = get_container().stats
     st.markdown("#### Заработанные бонусы по сотрудникам")
-    selected_range = _render_bonus_range_picker()
+    selected_range = _render_period_picker(BONUSES_PERIOD_KEY)
     if selected_range is None:
         return
     start_date, end_date = selected_range
@@ -82,11 +86,14 @@ def _render_bonuses_section(*, include_inactive: bool) -> None:
 def _render_finished_challenges_section(*, include_inactive: bool) -> None:
     stats = get_container().stats
     st.markdown("#### Выполненные задания по сотрудникам")
+    period = _render_period_picker(CHALLENGES_PERIOD_KEY)
+    if period is None:
+        return
     finished_challenges_df = stats.finished_challenges_by_user(
-        cache.user_challenge_df(), include_inactive=include_inactive
+        cache.user_challenge_df(), period=period, include_inactive=include_inactive
     )
     if finished_challenges_df.empty:
-        st.info("Пока никто не завершил ни одного задания.")
+        st.info("За выбранный период никто не завершил ни одного задания.")
     else:
         st.bar_chart(finished_challenges_df, color=["#2ecc71", "#e74c3c"])
 

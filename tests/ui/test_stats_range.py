@@ -6,7 +6,7 @@ from datetime import date
 
 import pytest
 
-from m8_team.ui.admin.tabs.stats import EARLIEST_DATE, default_bonus_range
+from m8_team.ui.admin.tabs.stats import EARLIEST_DATE, default_period
 
 
 @pytest.mark.parametrize(
@@ -19,9 +19,9 @@ from m8_team.ui.admin.tabs.stats import EARLIEST_DATE, default_bonus_range
     ],
 )
 def test_default_range_is_three_months_back_to_today(today: date, expected_start: date) -> None:
-    assert default_bonus_range(today) == (expected_start, today)
+    assert default_period(today) == (expected_start, today)
 
 
 def test_default_start_is_never_before_earliest_date() -> None:
-    start, _ = default_bonus_range(date(2024, 2, 1))
+    start, _ = default_period(date(2024, 2, 1))
     assert start == EARLIEST_DATE

@@ -158,11 +158,28 @@ def test_stats_bonus_chart_uses_russian_field_names(make_app: Callable[..., AppT
 
 
 def test_stats_period_defaults_to_last_three_months(make_app: Callable[..., AppTest]) -> None:
-    from m8_team.ui.admin.tabs.stats import default_bonus_range
+    from m8_team.ui.admin.tabs.stats import default_period
 
     at = make_app(_stats).run()
 
-    assert at.date_input(key="bonus_stats_date_range").value == default_bonus_range(date.today())
+    expected = default_period(date.today())
+    assert at.date_input(key="bonus_stats_date_range").value == expected
+    assert at.date_input(key="challenges_stats_date_range").value == expected
+
+
+def test_stats_challenges_chart_is_filtered_by_its_own_period(
+    make_app: Callable[..., AppTest], container: Any
+) -> None:
+    at = make_app(_stats).run()
+    container.stats.finished_challenges_by_user.reset_mock()
+
+    new_period = (date(2026, 1, 1), date(2026, 1, 31))
+    at.date_input(key="challenges_stats_date_range").set_value(new_period).run()
+
+    assert not at.exception
+    assert container.stats.finished_challenges_by_user.call_args.kwargs["period"] == new_period
+    # the bonuses picker is independent
+    assert at.date_input(key="bonus_stats_date_range").value != new_period
 
 
 def test_user_bonuses_page_shows_balance(

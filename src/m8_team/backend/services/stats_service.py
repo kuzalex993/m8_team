@@ -8,7 +8,7 @@ The aggregation methods take already-fetched rows so the UI can cache the reads 
 
 from __future__ import annotations
 
-from datetime import date
+from datetime import date, timedelta
 from typing import Any
 
 import pandas as pd
@@ -71,15 +71,36 @@ class StatsService:
         return rows
 
     def finished_challenges_by_user(
-        self, user_challenge_df: pd.DataFrame, *, include_inactive: bool = False
+        self,
+        user_challenge_df: pd.DataFrame,
+        *,
+        period: tuple[date, date] | None = None,
+        include_inactive: bool = False,
     ) -> pd.DataFrame:
+        """Finished challenges per employee (``challenge_status == finished``), split into
+        successful / unsuccessful by ``challenge_success``, biggest first. Anything not
+        finished is still open and is not counted.
+
+        ``period`` is an inclusive ``(start, end)`` range of days (UTC) matched against
+        ``fact_finish_date``; ``None`` means all time. A finished challenge whose
+        ``fact_finish_date`` is missing or unparseable can't be placed in a period, so it
+        is left out of any period-bound count.
+        """
         if user_challenge_df.empty:
             return pd.DataFrame()
 
-        finished = user_challenge_df[
-            (user_challenge_df["challenge_status"] == ChallengeStatus.FINISHED)
-            & self._counted_mask(user_challenge_df["user_id"], include_inactive)
-        ]
+        counted = (user_challenge_df["challenge_status"] == ChallengeStatus.FINISHED) & (
+            self._counted_mask(user_challenge_df["user_id"], include_inactive)
+        )
+        if period is not None:
+            start, end = period
+            finished_at = pd.to_datetime(
+                user_challenge_df["fact_finish_date"], format="ISO8601", utc=True, errors="coerce"
+            )
+            counted &= (finished_at >= pd.Timestamp(start, tz="UTC")) & (
+                finished_at < pd.Timestamp(end + timedelta(days=1), tz="UTC")
+            )
+        finished = user_challenge_df[counted]
         if finished.empty:
             return pd.DataFrame()
 
