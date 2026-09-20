@@ -4,22 +4,29 @@
 
 from __future__ import annotations
 
-from datetime import date, timedelta
+from datetime import date
 
+import pandas as pd
 import streamlit as st
 
 from m8_team.ui.common import cache
 from m8_team.ui.container import get_container
 
+EARLIEST_DATE = date(2024, 1, 1)
+
+
+def default_bonus_range(today: date) -> tuple[date, date]:
+    """Default period: three calendar months back from ``today`` up to ``today``."""
+    three_months_ago = (pd.Timestamp(today) - pd.DateOffset(months=3)).date()
+    return max(three_months_ago, EARLIEST_DATE), today
+
 
 def _render_bonus_range_picker() -> tuple[date, date] | None:
-    earliest_date = date(2024, 1, 1)
     latest_date = date.today()
-    default_start = max(latest_date - timedelta(days=30), earliest_date)
     selected_range = st.date_input(
         label="Период",
-        value=(default_start, latest_date),
-        min_value=earliest_date,
+        value=default_bonus_range(latest_date),
+        min_value=EARLIEST_DATE,
         max_value=latest_date,
         format="DD.MM.YYYY",
         key="bonus_stats_date_range",

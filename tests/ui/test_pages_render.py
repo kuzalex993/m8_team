@@ -7,6 +7,7 @@ charts, date pickers, metrics, forms) against regressions while the deprecated c
 from __future__ import annotations
 
 from collections.abc import Callable
+from datetime import date
 from typing import Any
 
 import pytest
@@ -142,6 +143,14 @@ def test_stats_renders_both_charts(make_app: Callable[..., AppTest]) -> None:
     at = make_app(_stats).run()
     assert not at.exception
     assert len(at.get("vega_lite_chart")) == 2
+
+
+def test_stats_period_defaults_to_last_three_months(make_app: Callable[..., AppTest]) -> None:
+    from m8_team.ui.admin.tabs.stats import default_bonus_range
+
+    at = make_app(_stats).run()
+
+    assert at.date_input(key="bonus_stats_date_range").value == default_bonus_range(date.today())
 
 
 def test_user_bonuses_page_shows_balance(
