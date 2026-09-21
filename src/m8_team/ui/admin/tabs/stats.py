@@ -79,11 +79,11 @@ def finished_challenges_long_format(counts: pd.DataFrame) -> pd.DataFrame:
 def stacked_bar_chart(
     data: pd.DataFrame, *, value: str, category: str, scale: alt.Scale | None = None
 ) -> alt.Chart:
-    """Bars per employee (``Имя``) stacked by ``category``, with the legend on the right.
+    """Bars per employee (``Имя``) stacked by ``category``, with the legend at the bottom.
 
-    Drawn with Altair rather than ``st.bar_chart`` because that can't place the legend
-    (it is always at the bottom) or fix series colours next to Russian field names. The
-    field names show in the tooltip and as the legend title; axis titles are hidden.
+    Drawn with Altair rather than ``st.bar_chart`` because that can't fix series colours
+    next to Russian field names. The field names show in the tooltip and as the legend
+    title; axis titles are hidden.
     """
     chart: alt.Chart = (
         alt.Chart(data)
@@ -96,7 +96,7 @@ def stacked_bar_chart(
             color=alt.Color(
                 f"{category}:N",
                 scale=alt.Undefined if scale is None else scale,
-                legend=alt.Legend(orient="right"),
+                legend=alt.Legend(orient="bottom"),
             ),
             tooltip=[NAME_LABEL, value, category],
         )

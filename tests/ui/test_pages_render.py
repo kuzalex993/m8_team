@@ -175,7 +175,7 @@ def test_stats_challenges_chart_is_stacked_green_and_red_with_russian_names(
     }
 
 
-def test_stats_charts_have_their_legend_on_the_right(make_app: Callable[..., AppTest]) -> None:
+def test_stats_charts_have_their_legend_on_the_bottom(make_app: Callable[..., AppTest]) -> None:
     at = make_app(_stats).run()
 
     assert not at.exception
@@ -183,7 +183,7 @@ def test_stats_charts_have_their_legend_on_the_right(make_app: Callable[..., App
     assert len(charts) == 2
     for chart in charts:
         encoding = json.loads(chart.proto.spec)["encoding"]
-        assert encoding["color"]["legend"]["orient"] == "right"
+        assert encoding["color"]["legend"]["orient"] == "bottom"
 
 
 def test_stats_period_defaults_to_last_three_months(make_app: Callable[..., AppTest]) -> None:
