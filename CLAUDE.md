@@ -193,7 +193,7 @@ GitHub Actions build → push to `ghcr.io/<owner>/m8_team` → SSH deploy to a T
 | Trigger | Env | Image tag | Container | Port |
 |---|---|---|---|---|
 | push to `main` | NOP / staging (`m8-team-stg`) | `:nop` | `m8-nop` | 8502 |
-| push to `release/**` | PROD (`m8-team-prod`) | `:prod` | `m8-prod` | 8503 |
+| push to `release/**` | PROD (`m8-team-prod`) | `:prod` | `m8-prod` | 8501 |
 
 Full details and one-time server setup: [DEPLOYMENT.md](DEPLOYMENT.md).
 

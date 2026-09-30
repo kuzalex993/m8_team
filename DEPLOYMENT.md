@@ -7,11 +7,18 @@ The app runs as a Docker container on a single Timeweb VPS. Two environments sha
 | Environment | Branch trigger | Port | Firebase project |
 |---|---|---|---|
 | NOP (staging) | push to `main` | `8502` | `m8-team-stg` |
-| PROD | push to `release/**` | `8503` | `m8-team-prod` |
+| PROD | push to `release/**` | `8501` | `m8-team-prod` |
 
 Docker images are built on GitHub Actions and pushed to GitHub Container Registry (GHCR) at `ghcr.io/kuzalex993/m8_team`.
-a
-The existing `streamlit_app` container (legacy) runs on port `8501` and is untouched.
+
+PROD now reuses port `8501`, previously occupied by the legacy `streamlit_app` container.
+That legacy container must be stopped/removed on the server *before* the next PROD deploy,
+or `docker run -p 8501:8080` will fail with "port is already allocated":
+
+```bash
+docker stop streamlit_app || true
+docker rm streamlit_app || true
+```
 
 ---
 
@@ -124,6 +131,8 @@ Create it at: GitHub → **Settings → Developer settings → Personal access t
 **Steps:** same as NOP, but:
 - Image tag: `ghcr.io/kuzalex993/m8_team:prod`
 - Container name: `m8-prod`
+- Port `8501:8080` (see note above: the legacy `streamlit_app` container must be
+  stopped/removed first, since it occupied this port)
 - Env file: `/opt/m8/prod.env`
 - Firebase credentials mounted from `/opt/m8/prod-firebase.json`
 
