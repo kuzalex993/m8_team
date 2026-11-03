@@ -151,6 +151,11 @@ The `src/entrypoint.sh` script runs before Streamlit starts. If `FIREBASE_CREDEN
 
 ## Checking container status on the server
 
+Firestore integration tests currently run only locally from a developer's computer;
+they are not configured in deployment workflows or on the server. See
+[INTEGRATION_TESTING.md](INTEGRATION_TESTING.md) for local runs against the emulator
+or development database.
+
 ```bash
 # list running containers
 docker ps

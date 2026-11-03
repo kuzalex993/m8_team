@@ -1,6 +1,6 @@
-# CLAUDE.md
+# AGENTS.md
 
-This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
+This file provides guidance to Coding Agent when working with code in this repository.
 
 ## What this is
 
@@ -199,6 +199,13 @@ Full details and one-time server setup: [DEPLOYMENT.md](DEPLOYMENT.md).
 
 ## Tests
 
+Firestore integration tests currently run only locally from a developer's computer,
+against a local emulator or the remote dev database. CI/CD and server execution are
+not configured. For setup and commands, read [INTEGRATION_TESTING.md](INTEGRATION_TESTING.md).
+It covers emulator and dev database setup, environment selection, transaction scenarios,
+fixture cleanup, and reporting. Integration cases are opt-in and are skipped without
+the corresponding environment variables; never use production credentials.
+
 `pyproject.toml` sets `pythonpath = ["src"]`, so imports are `from m8_team... import ...`.
 Layout under `tests/`:
 
@@ -214,6 +221,8 @@ Layout under `tests/`:
   chart specs, parsed from the Vega-Lite JSON); the other files cover the admin edit forms,
   challenge completion, and guard imports and removed or deprecated Streamlit APIs.
 - `tests/architecture/test_layering.py` — AST guard for the UI/backend import contract.
+- `tests/integration/` — real Firestore transaction tests against the emulator or an
+  explicitly selected dev database; see the integration testing guide above.
 
 ## Scripts
 

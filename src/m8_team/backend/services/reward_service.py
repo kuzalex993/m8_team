@@ -14,7 +14,6 @@ from m8_team.backend.domain.clock import now_iso
 from m8_team.backend.domain.enums import RewardStatus
 from m8_team.backend.domain.errors import (
     InsufficientBalance,
-    InsufficientReservedBonuses,
     PersistenceError,
 )
 from m8_team.backend.domain.models import UserReward
@@ -110,16 +109,11 @@ class RewardService:
             f"Запрошена новая награда:\nПользователь: {user_name}\nНаграда: {reward_description}"
         )
 
-    def confirm(self, *, user_reward_id: str, user_id: str, reward_id: str) -> None:
-        price = int(self._rewards.price(reward_id))
-        description = self._rewards.description(reward_id)
-        reserved = self._users.reserved_bonuses(user_id)
-        if reserved is None or price > reserved:
-            raise InsufficientReservedBonuses
+    def cancel(self, *, user_reward_id: str) -> None:
+        self._ledger.cancel_reserved_atomic(user_reward_id=user_reward_id)
 
-        if not self._ledger.settle_reserved_atomic(
-            user_id=user_id, amount=price, user_reward_id=user_reward_id
-        ):
-            raise PersistenceError("could not settle reserved bonuses")
-
-        self._notifications.notify_user(user_id, f"Ура! Админ подтвердил награду: {description}")
+    def confirm(self, *, user_reward_id: str) -> None:
+        result = self._ledger.settle_reserved_atomic(user_reward_id=user_reward_id)
+        self._notifications.notify_user(
+            result.user_id, f"Ура! Админ подтвердил награду: {result.description}"
+        )

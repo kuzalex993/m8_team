@@ -21,3 +21,10 @@ class ChallengeCompletion:
     user_challenge_id: str
     on_time: bool
     reward_granted: int
+
+
+@dataclass(frozen=True)
+class RewardResolution:
+    user_id: str
+    description: str
+    amount: int

@@ -9,3 +9,10 @@ OPERATION_LABELS: dict[str, TransactionType] = {
     "Добавить": TransactionType.CHARGE,
     "Вычесть": TransactionType.WRITE_OFF,
 }
+
+
+REWARD_STATUS_LABELS: dict[str, str] = {
+    "new": "Ожидает решения",
+    "completed": "Подтверждена",
+    "cancelled": "Отменена",
+}

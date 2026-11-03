@@ -11,20 +11,46 @@ import pandas as pd
 import streamlit as st
 
 from m8_team.backend.domain.enums import RewardStatus
-from m8_team.backend.domain.errors import DomainError
+from m8_team.backend.domain.errors import DomainError, RewardAlreadyResolved
 from m8_team.backend.domain.models import UserReward
-from m8_team.ui.common import feedback
+from m8_team.ui.common.labels import REWARD_STATUS_LABELS
 from m8_team.ui.container import get_container
 
 
-def confirm_user_request(user_reward_id: str, user_id: str, reward_id: str) -> None:
+def _resolve_request(user_reward_id: str, *, cancel: bool) -> None:
+    if st.session_state.get("user_id") != "admin":
+        st.session_state["reward_decision_feedback"] = (False, "Недостаточно прав")
+        return
     try:
-        get_container().reward.confirm(
-            user_reward_id=user_reward_id, user_id=user_id, reward_id=reward_id
+        service = get_container().reward
+        if cancel:
+            service.cancel(user_reward_id=user_reward_id)
+        else:
+            service.confirm(user_reward_id=user_reward_id)
+        message = (
+            "Заявка отменена. Баллы возвращены пользователю" if cancel else "Награда подтверждена"
         )
-        feedback.mark_ok()
+        st.session_state["reward_decision_feedback"] = (True, message)
+    except RewardAlreadyResolved:
+        st.session_state["reward_decision_feedback"] = (False, "Заявка уже обработана")
     except DomainError:
-        feedback.mark_failed()
+        st.session_state["reward_decision_feedback"] = (
+            False,
+            "Не удалось обработать заявку. Проверьте резервирование и повторите попытку",
+        )
+    # The employee tab caches the selected employee's free balance in this session.
+    selected = st.session_state.get("selected_user_name")
+    selected_id = st.session_state.get("users_data_map", {}).get(selected)
+    if selected_id:
+        st.session_state["current_user_balance"] = get_container().user.free_bonuses(selected_id)
+
+
+def confirm_user_request(user_reward_id: str) -> None:
+    _resolve_request(user_reward_id, cancel=False)
+
+
+def cancel_user_request(user_reward_id: str) -> None:
+    _resolve_request(user_reward_id, cancel=True)
 
 
 def _render_pending_request(user_reward: UserReward) -> None:
@@ -41,21 +67,26 @@ def _render_pending_request(user_reward: UserReward) -> None:
         with request_col3:
             st.caption(body=formatted_date)
         with request_col4:
-            submitted = st.form_submit_button(
+            st.form_submit_button(
                 label="Подтвердить",
                 width="stretch",
                 type="primary",
                 on_click=confirm_user_request,
-                args=(user_reward.id, user_reward.user_id, user_reward.reward_id),
+                args=(user_reward.id,),
             )
-        feedback.show_result(
-            submitted,
-            success_message=f"Награда «{user_reward.reward_description}» подтверждена",
-            error_message="Не удалось подтвердить: недостаточно зарезервированных бонусов",
-        )
+            st.form_submit_button(
+                label="Отменить",
+                width="stretch",
+                on_click=cancel_user_request,
+                args=(user_reward.id,),
+            )
 
 
 def render_requests_tab() -> None:
+    outcome = st.session_state.pop("reward_decision_feedback", None)
+    if outcome is not None:
+        ok, message = outcome
+        st.success(message) if ok else st.error(message)
     completed_rewards_to_df: dict[str, list[Any]] = {
         "name": [],
         "description": [],
@@ -74,7 +105,11 @@ def render_requests_tab() -> None:
             completed_rewards_to_df["description"].append(user_reward.reward_description)
             completed_rewards_to_df["name"].append(user_reward.user_name)
             completed_rewards_to_df["request_date"].append(user_reward.user_reward_request_date)
-            completed_rewards_to_df["status"].append(user_reward.user_reward_status)
+            completed_rewards_to_df["status"].append(
+                REWARD_STATUS_LABELS.get(
+                    user_reward.user_reward_status, user_reward.user_reward_status
+                )
+            )
             completed_rewards_to_df["decision_date"].append(user_reward.user_reward_decision_date)
 
     if show_info_flag:
