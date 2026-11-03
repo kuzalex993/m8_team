@@ -12,6 +12,7 @@ from streamlit_echarts import st_echarts
 from m8_team.backend.domain.clock import ISO_FORMAT
 from m8_team.backend.domain.errors import DomainError
 from m8_team.ui.common import cache
+from m8_team.ui.common.labels import REWARD_STATUS_LABELS
 from m8_team.ui.container import get_container
 from m8_team.ui.user.charts import draw_bonus_chart
 from m8_team.ui.user.state import refresh_user_data
@@ -77,7 +78,9 @@ def _render_requested_rewards() -> None:
             to_rewards_df["request_date"].append(
                 datetime.strptime(reward.user_reward_request_date, ISO_FORMAT)
             )
-            to_rewards_df["status"].append(reward.user_reward_status)
+            to_rewards_df["status"].append(
+                REWARD_STATUS_LABELS.get(reward.user_reward_status, reward.user_reward_status)
+            )
         rewards_df = pd.DataFrame(to_rewards_df).sort_values(by="request_date", ascending=False)
         st.dataframe(
             data=rewards_df,

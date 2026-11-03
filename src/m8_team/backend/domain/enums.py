@@ -15,6 +15,7 @@ class TransactionType(StrEnum):
     WRITE_OFF = "write off bonus"
     RESERVE = "reserve bonus"
     DEBIT = "debiting bonus"
+    REFUND = "refund bonus"
 
 
 class EventType(StrEnum):
@@ -32,3 +33,4 @@ class ChallengeStatus(StrEnum):
 class RewardStatus(StrEnum):
     NEW = "new"
     COMPLETED = "completed"
+    CANCELLED = "cancelled"

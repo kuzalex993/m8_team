@@ -21,3 +21,11 @@ class NotFound(DomainError):
 
 class PersistenceError(DomainError):
     """A Firestore write failed. Wraps the underlying SDK exception message."""
+
+
+class RewardAlreadyResolved(DomainError):
+    """The reward order no longer accepts a decision."""
+
+
+class InvalidReservation(DomainError):
+    """A reward order has no unambiguous, valid reservation in the ledger."""
